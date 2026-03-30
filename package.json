@@ -1,0 +1,33 @@
+{
+  "name": "untappd-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server exposing Untappd API tools for AI agents",
+  "main": "dist/index.js",
+  "bin": {
+    "untappd-mcp-server": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.0.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "untappd",
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "beer"
+  ],
+  "license": "MIT"
+}
