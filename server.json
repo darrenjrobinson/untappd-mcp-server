@@ -1,0 +1,36 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.darrenjrobinson/untappd",
+  "description": "MCP server exposing Untappd API tools for AI agents",
+  "repository": {
+    "url": "https://github.com/darrenjrobinson/untappd-mcp-server",
+    "source": "github"
+  },
+  "version": "1.0.2",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "untappd-mcp-server",
+      "version": "1.0.2",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "description": "Untappd API Client ID",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": true,
+          "name": "UNTAPPD_CLIENT_ID"
+        },
+        {
+          "description": "Untappd API Client Secret",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": true,
+          "name": "UNTAPPD_CLIENT_SECRET"
+        }
+      ]
+    }
+  ]
+}
