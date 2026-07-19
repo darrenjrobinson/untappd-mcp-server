@@ -6,12 +6,12 @@
     "url": "https://github.com/darrenjrobinson/untappd-mcp-server",
     "source": "github"
   },
-  "version": "1.0.2",
+  "version": "1.0.3",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "untappd-mcp-server",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "transport": {
         "type": "stdio"
       },

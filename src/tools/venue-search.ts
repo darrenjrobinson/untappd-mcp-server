@@ -24,7 +24,7 @@ export function registerVenueSearch(server: McpServer) {
             type: "text" as const,
             text: JSON.stringify(
               {
-                venues: data.venues?.items ?? [],
+                venues: (data.venues?.items ?? []).map((item) => item.venue),
                 count: data.venues?.count ?? 0,
                 rateLimit,
               },

@@ -1,6 +1,6 @@
 {
   "name": "untappd-mcp-server",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "mcpName": "io.github.darrenjrobinson/untappd",
   "description": "MCP server exposing Untappd API tools for AI agents",
   "main": "dist/index.js",

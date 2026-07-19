@@ -17,7 +17,7 @@ export interface UntappdApiResponse<T> {
 export interface VenueSearchResponse {
   venues: {
     count: number;
-    items: VenueSearchItem[];
+    items: Array<{ venue: VenueSearchItem }>;
   };
 }
 
