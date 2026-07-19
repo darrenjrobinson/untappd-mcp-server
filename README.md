@@ -1,5 +1,9 @@
 # untappd-mcp-server
 
+[![npm version](https://img.shields.io/npm/v/untappd-mcp-server)](https://www.npmjs.com/package/untappd-mcp-server)
+[![npm downloads](https://img.shields.io/npm/dm/untappd-mcp-server)](https://www.npmjs.com/package/untappd-mcp-server)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 A Model Context Protocol (MCP) server that exposes the Untappd API as tools for AI agents. Search for venues, breweries, and beers, check what's on tap via recent check-in feeds, and look up user activity — all from any MCP-compatible client.
 
 ## Prerequisites
