@@ -239,7 +239,7 @@ Retrieve a user's friend list (public accounts only).
 
 #### get_global_feed
 
-Retrieve the global public check-in feed (The Pub). High rate-limit cost for the data returned — prefer `min_id` polling to fetch only new check-ins.
+Retrieve the global public check-in feed (The Pub). High rate-limit cost for the data returned — prefer `min_id` polling to fetch only new check-ins. **Note:** standard API keys are typically not authorized for `/thepub` — Untappd returns *"You are not authorized to call this method from this key"* unless your key has elevated access (`get_local_feed` is not restricted).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -373,6 +373,7 @@ npx @modelcontextprotocol/inspector node dist/index.js
 - **No venue events** — Untappd's public API has no events endpoint, and the Eventbrite search API that could have bridged the gap was discontinued; deferred to v3.
 - **Rate limit: 100/hour** — minimise redundant calls; every response surfaces `rateLimit.remaining`.
 - **Feed limit caps** — tools accept `limit` up to 50, but the API caps some feeds at 25 server-side.
+- **Global feed requires an elevated key** — `/thepub` (`get_global_feed`) is not authorized for standard API keys; the local feed works with any key.
 - **Foursquare lookup requires v2 IDs** — the MD5-hash format; Foursquare v3 numeric IDs will not work.
 - **Venue IDs required** — use `venue_search` first to resolve a venue name to an ID.
 - **Public check-ins only** — private user accounts are not visible.

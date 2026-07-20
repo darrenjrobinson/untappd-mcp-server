@@ -24,7 +24,9 @@ if (!hasClientCreds && !hasToken) {
   process.exit(1);
 }
 
-const username = process.env.UNTAPPD_USERNAME ?? "darrenjrobinson";
+// Fallback is a known-valid public Untappd account (co-founder). Set
+// UNTAPPD_USERNAME to smoke-test against your own profile.
+const username = process.env.UNTAPPD_USERNAME ?? "gregavola";
 
 // Capture tool handlers the same way the unit tests do.
 const tools = {};
@@ -60,6 +62,13 @@ async function run(name, args, { skip, reason } = {}) {
     }
     return payload;
   } catch (err) {
+    // Some endpoints (e.g. /thepub) require elevated API key permissions —
+    // report as restricted rather than failing the run.
+    if (/not authorized to call this method from this key/i.test(err.message)) {
+      console.log(`- RESTRICTED ${name} — API key lacks access to this endpoint`);
+      results.push({ name, status: "restricted" });
+      return null;
+    }
     console.error(`✖ ${name} — ${err.message}`);
     results.push({ name, status: "fail", error: err.message });
     return null;
@@ -88,9 +97,9 @@ await run(
 const venueSearch = await run("venue_search", { q: "Bracket Brewing" });
 const venue = venueSearch?.venues?.[0];
 const venueId = venue?.venue_id;
-await run(
+const venueInfo = await run(
   "get_venue_info",
-  { venue_id: venueId, compact: true },
+  { venue_id: venueId },
   venueId ? {} : { skip: true, reason: "no venue from search" }
 );
 await run(
@@ -98,7 +107,9 @@ await run(
   { venue_id: venueId, limit: 5 },
   venueId ? {} : { skip: true, reason: "no venue from search" }
 );
-const foursquareId = venue?.foursquare?.foursquare_id;
+const foursquareId =
+  venue?.foursquare?.foursquare_id ??
+  venueInfo?.venue?.foursquare?.foursquare_id;
 await run(
   "get_venue_foursquare_lookup",
   { foursquare_id: foursquareId },
@@ -111,16 +122,22 @@ await run("get_global_feed", { limit: 5 });
 await run("get_local_feed", { lat: -33.8688, lng: 151.2093, radius: 25, limit: 5 });
 
 // --- User chain ---
-await run("get_user_info", { username, compact: true });
-await run("get_user_activity", { username, limit: 5 });
-await run("get_user_badges", { username });
-await run("get_user_friends", { username, limit: 5 });
-await run("get_user_wishlist", { username, limit: 5 });
-await run("get_user_distinct_beers", { username, limit: 5, sort: "checkin" });
+const userInfo = await run("get_user_info", { username, compact: true });
+// If the username doesn't resolve, skip the rest of the user chain — some
+// user endpoints return empty lists instead of 404 for unknown users, which
+// would produce vacuous passes.
+const userSkip = userInfo
+  ? {}
+  : { skip: true, reason: `username "${username}" did not resolve` };
+await run("get_user_activity", { username, limit: 5 }, userSkip);
+await run("get_user_badges", { username }, userSkip);
+await run("get_user_friends", { username, limit: 5 }, userSkip);
+await run("get_user_wishlist", { username, limit: 5 }, userSkip);
+await run("get_user_distinct_beers", { username, limit: 5, sort: "checkin" }, userSkip);
 
 // --- Composites (public) ---
-await run("get_user_beer_stats", { username, max_pages: 1 });
-await run("get_user_badge_summary", { username, max_pages: 1 });
+await run("get_user_beer_stats", { username, max_pages: 1 }, userSkip);
+await run("get_user_badge_summary", { username, max_pages: 1 }, userSkip);
 
 // --- Authenticated-only tools ---
 const authSkip = hasToken
@@ -152,9 +169,12 @@ await run(
 const passed = results.filter((r) => r.status === "pass").length;
 const failed = results.filter((r) => r.status === "fail");
 const skipped = results.filter((r) => r.status === "skip").length;
+const restricted = results.filter((r) => r.status === "restricted").length;
 
 console.log("\n--- Smoke summary ---");
-console.log(`passed: ${passed}, failed: ${failed.length}, skipped: ${skipped}`);
+console.log(
+  `passed: ${passed}, failed: ${failed.length}, skipped: ${skipped}, restricted: ${restricted}`
+);
 console.log(`rate limit remaining: ${getRateLimit().remaining}`);
 for (const f of failed) {
   console.log(`  FAIL ${f.name}: ${f.error}`);

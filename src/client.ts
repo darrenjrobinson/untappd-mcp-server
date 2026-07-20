@@ -122,7 +122,18 @@ export async function untappdFetch<T>(
   }
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`Untappd API error: ${response.status} ${body}`);
+    let detail = body;
+    try {
+      const parsed = JSON.parse(body) as {
+        meta?: { error_detail?: string; error_type?: string };
+      };
+      if (parsed.meta?.error_detail) {
+        detail = parsed.meta.error_detail;
+      }
+    } catch {
+      // not JSON — surface the raw body
+    }
+    throw new Error(`Untappd API error: ${response.status} ${detail}`);
   }
 
   const json = (await response.json()) as UntappdApiResponse<T>;

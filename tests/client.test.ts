@@ -90,6 +90,28 @@ describe("untappdFetch errors and rate limit capture", () => {
       "Rate limit exceeded"
     );
   });
+
+  it("surfaces Untappd's error_detail on other error statuses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            meta: {
+              code: 500,
+              error_detail: "There is no user with that username.",
+              error_type: "invalid_param",
+            },
+            response: [],
+          }),
+          { status: 500 }
+        )
+      )
+    );
+    await expect(untappdFetch("/user/wishlist/nobody")).rejects.toThrow(
+      "Untappd API error: 500 There is no user with that username."
+    );
+  });
 });
 
 describe("helpers", () => {

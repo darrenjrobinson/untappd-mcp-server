@@ -6,7 +6,7 @@ import { VenueCheckinsResponse } from "../types.js";
 export function registerGetGlobalFeed(server: McpServer) {
   server.tool(
     "get_global_feed",
-    "Retrieve the global public check-in feed (The Pub). High rate-limit cost for the data returned — prefer min_id polling to fetch only new check-ins",
+    "Retrieve the global public check-in feed (The Pub). High rate-limit cost for the data returned — prefer min_id polling to fetch only new check-ins. Note: standard API keys may not be authorized for this endpoint (Untappd returns 'not authorized to call this method from this key')",
     {
       limit: z
         .number()
