@@ -60,7 +60,7 @@ describe("get_friend_feed", () => {
     const tool = captureTools(registerGetFriendFeed)["get_friend_feed"];
     mockUntappd([]);
     await expect(invokeTool(tool, {})).rejects.toThrow(
-      "UNTAPPD_ACCESS_TOKEN is required for get_friend_feed"
+      "access token is required for get_friend_feed"
     );
   });
 

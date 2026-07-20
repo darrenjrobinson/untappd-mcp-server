@@ -4,13 +4,13 @@
 [![npm downloads](https://img.shields.io/npm/dm/untappd-mcp-server)](https://www.npmjs.com/package/untappd-mcp-server)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A Model Context Protocol (MCP) server that exposes the Untappd API as tools for AI agents — **26 tools** covering the full Untappd v4 read API. Search venues, breweries, and beers; check what's on tap via check-in feeds; explore user badges, friends, wish lists, and drinking history; and aggregate stats — all from any MCP-compatible client.
+A Model Context Protocol (MCP) server that exposes the Untappd API as tools for AI agents — **28 tools** covering the full Untappd v4 read API, plus built-in interactive OAuth authentication. Search venues, breweries, and beers; check what's on tap via check-in feeds; explore user badges, friends, wish lists, and drinking history; and aggregate stats — all from any MCP-compatible client.
 
 ## Prerequisites
 
 - Node.js 18+
 - Untappd API credentials (`client_id` and `client_secret`) from [untappd.com/api](https://untappd.com/api)
-- Optional: an Untappd OAuth access token to unlock authenticated tools
+- Optional: an Untappd OAuth access token to unlock authenticated tools — obtainable in-chat via the `authenticate_untappd` tool or `npx untappd-mcp-server auth` (see [Interactive Authentication](#interactive-authentication))
 
 ## Quick Start
 
@@ -51,7 +51,25 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 
 ## Tools
 
-Tools marked **🔑 token** require `UNTAPPD_ACCESS_TOKEN`.
+Tools marked **🔑 token** require an access token (`UNTAPPD_ACCESS_TOKEN` env var or interactive authentication).
+
+### Authentication Tools
+
+#### authenticate_untappd
+
+Interactively authenticate with Untappd via OAuth: opens your browser to Untappd's approve page, captures the redirect on a temporary localhost listener, and saves the access token — the 🔑 tools work immediately, no restart. **Prerequisite:** your Untappd app's Callback URL must be set to exactly `http://localhost:8737/callback` (or your `UNTAPPD_REDIRECT_URL`).
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `timeout_seconds` | integer | No | How long to wait for browser approval (default 180, max 600) |
+
+#### get_auth_status
+
+Report authentication status: token presence, source (env var or token file), file path, and whether the 🔑 tools are unlocked. Free by default; `validate: true` verifies the token with one API call.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `validate` | boolean | No | Verify the token against the API with one call (default false) |
 
 ### Search & Lookup
 
@@ -346,9 +364,37 @@ Composite tools call `assertRateLimitSufficient` before starting pagination and 
 | Public | `UNTAPPD_CLIENT_ID` + `UNTAPPD_CLIENT_SECRET` | All public tools |
 | Authenticated | + `UNTAPPD_ACCESS_TOKEN` (+ optional `UNTAPPD_USERNAME`) | `get_friend_feed`, `get_user_venue_history`, `get_user_stats_at_venue`, `search_venue_then_get_user_stats` |
 
-When `UNTAPPD_ACCESS_TOKEN` is set, the server prefers it for **all** calls — rate limits become user-scoped and `/user` endpoints return richer data. `UNTAPPD_USERNAME` provides a default username for authenticated user tools.
+When an access token is configured (env var or saved token file), the server prefers it for **all** calls — rate limits become user-scoped and `/user` endpoints return richer data. `UNTAPPD_USERNAME` provides a default username for authenticated user tools.
 
 The server exits on startup if neither a client id/secret pair nor an access token is configured.
+
+## Interactive Authentication
+
+You don't need to obtain an access token manually — the server can run Untappd's OAuth flow for you.
+
+**One-time prerequisite:** in your Untappd app settings at [untappd.com/api](https://untappd.com/api), set the **Callback URL** to exactly:
+
+```
+http://localhost:8737/callback
+```
+
+(or the value of `UNTAPPD_REDIRECT_URL` if you override it — it must be a localhost http URL, and the two must match exactly or Untappd rejects the flow).
+
+**In chat:** ask your agent to run the `authenticate_untappd` tool. Your browser opens to Untappd's approve page; once you approve, the token is saved and the four 🔑 tools work immediately — no restart needed.
+
+**In a terminal:**
+
+```bash
+npx untappd-mcp-server auth            # run the interactive flow
+npx untappd-mcp-server auth --status   # show current auth status
+npx untappd-mcp-server auth --clear    # delete the saved token
+```
+
+(In the repo: `npm run auth`.)
+
+**Storage & precedence:** the token is saved to `~/.untappd-mcp-server/token.json` (override with `UNTAPPD_TOKEN_PATH`). If `UNTAPPD_ACCESS_TOKEN` is set it always wins over the file. Untappd tokens do not expire.
+
+**Security note:** the token is stored in plaintext with `0600` permissions on macOS/Linux; on Windows protection relies on your user-profile ACLs. Delete it any time with `auth --clear`. Tool outputs only ever include a masked form of the token.
 
 ## Development
 
@@ -378,6 +424,7 @@ npx @modelcontextprotocol/inspector node dist/index.js
 - **Venue IDs required** — use `venue_search` first to resolve a venue name to an ID.
 - **Public check-ins only** — private user accounts are not visible.
 - **Read-only** — write operations (check-in, toast, comment, wish-list management) are deferred to v3.
+- **MCP client timeouts** — some MCP clients cap tool-call duration below the `authenticate_untappd` default of 180s; pass a smaller `timeout_seconds` if your client times out first, or use `npx untappd-mcp-server auth` in a terminal instead.
 
 ## License
 

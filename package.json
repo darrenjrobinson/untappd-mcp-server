@@ -13,7 +13,8 @@
     "dev": "ts-node src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke": "npm run build && node scripts/smoke.mjs"
+    "smoke": "npm run build && node scripts/smoke.mjs",
+    "auth": "npm run build && node dist/index.js auth"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",

@@ -1,3 +1,4 @@
+import { resolveAccessToken } from "./auth.js";
 import { RateLimitInfo, UntappdApiResponse } from "./types.js";
 
 const BASE_URL = "https://api.untappd.com/v4";
@@ -15,12 +16,15 @@ export function _setRateLimitForTests(info: RateLimitInfo): void {
 export type AuthMode = "auto" | "token";
 
 /**
- * Throws if UNTAPPD_ACCESS_TOKEN is not configured. Call at the top of
- * authenticated-only tool handlers for a clear error instead of an API 401.
+ * Throws if no access token is configured (env var or saved token file).
+ * Call at the top of authenticated-only tool handlers for a clear error
+ * instead of an API 401.
  */
 export function checkAuthRequired(toolName: string): void {
-  if (!process.env.UNTAPPD_ACCESS_TOKEN) {
-    throw new Error(`UNTAPPD_ACCESS_TOKEN is required for ${toolName}`);
+  if (!resolveAccessToken()) {
+    throw new Error(
+      `An Untappd access token is required for ${toolName} — set UNTAPPD_ACCESS_TOKEN or run the authenticate_untappd tool first`
+    );
   }
 }
 
@@ -54,7 +58,7 @@ export async function untappdFetch<T>(
   params: Record<string, string | number | boolean | undefined> = {},
   opts: { auth?: AuthMode } = {}
 ): Promise<{ data: T; rateLimit: RateLimitInfo }> {
-  const accessToken = process.env.UNTAPPD_ACCESS_TOKEN;
+  const accessToken = resolveAccessToken()?.token;
   const clientId = process.env.UNTAPPD_CLIENT_ID;
   const clientSecret = process.env.UNTAPPD_CLIENT_SECRET;
 
@@ -62,7 +66,9 @@ export async function untappdFetch<T>(
 
   if (opts.auth === "token") {
     if (!accessToken) {
-      throw new Error("UNTAPPD_ACCESS_TOKEN is required for this endpoint");
+      throw new Error(
+        "An Untappd access token is required for this endpoint — set UNTAPPD_ACCESS_TOKEN or run the authenticate_untappd tool (or: npx untappd-mcp-server auth)"
+      );
     }
     url.searchParams.set("access_token", accessToken);
   } else if (accessToken) {
@@ -74,7 +80,7 @@ export async function untappdFetch<T>(
     url.searchParams.set("client_secret", clientSecret);
   } else {
     throw new Error(
-      "Untappd credentials required: set UNTAPPD_CLIENT_ID + UNTAPPD_CLIENT_SECRET, or UNTAPPD_ACCESS_TOKEN"
+      "Untappd credentials required: set UNTAPPD_CLIENT_ID + UNTAPPD_CLIENT_SECRET, or UNTAPPD_ACCESS_TOKEN (or run: npx untappd-mcp-server auth)"
     );
   }
 

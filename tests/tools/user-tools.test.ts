@@ -51,7 +51,7 @@ describe("get_user_venue_history", () => {
     const tool = captureTools(registerGetUserVenueHistory)["get_user_venue_history"];
     mockUntappd([]);
     await expect(invokeTool(tool, { username: "tester" })).rejects.toThrow(
-      "UNTAPPD_ACCESS_TOKEN is required for get_user_venue_history"
+      "access token is required for get_user_venue_history"
     );
   });
 

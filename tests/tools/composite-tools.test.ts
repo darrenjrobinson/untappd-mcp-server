@@ -197,7 +197,7 @@ describe("get_user_stats_at_venue", () => {
     mockUntappd([]);
     await expect(
       invokeTool(tool, { venue_id: 9, username: "tester" })
-    ).rejects.toThrow("UNTAPPD_ACCESS_TOKEN is required for get_user_stats_at_venue");
+    ).rejects.toThrow("access token is required for get_user_stats_at_venue");
   });
 
   it("finds the venue in history and returns stats", async () => {
@@ -256,7 +256,7 @@ describe("search_venue_then_get_user_stats", () => {
     await expect(
       invokeTool(tool, { q: "Test Venue", username: "tester" })
     ).rejects.toThrow(
-      "UNTAPPD_ACCESS_TOKEN is required for search_venue_then_get_user_stats"
+      "access token is required for search_venue_then_get_user_stats"
     );
   });
 

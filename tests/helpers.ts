@@ -1,3 +1,5 @@
+import * as os from "node:os";
+import * as path from "node:path";
 import { expect, vi } from "vitest";
 import { z } from "zod";
 import type { ZodRawShape } from "zod";
@@ -78,6 +80,14 @@ export function setupEnv() {
   process.env.UNTAPPD_CLIENT_SECRET = "test-client-secret";
   delete process.env.UNTAPPD_ACCESS_TOKEN;
   delete process.env.UNTAPPD_USERNAME;
+  delete process.env.UNTAPPD_REDIRECT_URL;
+  // Point token resolution at a nonexistent file so a real token saved at
+  // ~/.untappd-mcp-server/token.json can never leak into the tests.
+  process.env.UNTAPPD_TOKEN_PATH = path.join(
+    os.tmpdir(),
+    "untappd-mcp-tests",
+    "nonexistent-token.json"
+  );
   _setRateLimitForTests({ limit: 100, remaining: 100 });
 }
 

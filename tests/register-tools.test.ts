@@ -3,6 +3,9 @@ import { registerAllTools } from "../src/register-tools.js";
 import { captureTools } from "./helpers.js";
 
 const EXPECTED_TOOLS = [
+  // Auth
+  "authenticate_untappd",
+  "get_auth_status",
   // Search & lookup
   "venue_search",
   "search_brewery",
@@ -40,10 +43,10 @@ const EXPECTED_TOOLS = [
 ];
 
 describe("registerAllTools", () => {
-  it("registers exactly the expected 26 tools", () => {
+  it("registers exactly the expected 28 tools", () => {
     const tools = captureTools(registerAllTools);
     const names = Object.keys(tools);
-    expect(names).toHaveLength(26);
+    expect(names).toHaveLength(28);
     expect(names.sort()).toEqual([...EXPECTED_TOOLS].sort());
   });
 

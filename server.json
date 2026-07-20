@@ -31,7 +31,7 @@
           "name": "UNTAPPD_CLIENT_SECRET"
         },
         {
-          "description": "Untappd OAuth access token — unlocks authenticated tools (friend feed, venue history, venue stats) and user-scoped rate limits",
+          "description": "Untappd OAuth access token — unlocks authenticated tools (friend feed, venue history, venue stats) and user-scoped rate limits. Optional: can instead be obtained interactively via the authenticate_untappd tool or `npx untappd-mcp-server auth` (stored in ~/.untappd-mcp-server/token.json)",
           "isRequired": false,
           "format": "string",
           "isSecret": true,
@@ -43,6 +43,20 @@
           "format": "string",
           "isSecret": false,
           "name": "UNTAPPD_USERNAME"
+        },
+        {
+          "description": "OAuth redirect URL for interactive authentication — must exactly match the Callback URL registered in your Untappd app settings; default http://localhost:8737/callback",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "UNTAPPD_REDIRECT_URL"
+        },
+        {
+          "description": "Override path for the saved token file; default ~/.untappd-mcp-server/token.json",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "UNTAPPD_TOKEN_PATH"
         }
       ]
     }

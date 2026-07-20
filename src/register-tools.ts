@@ -1,5 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+// Auth
+import { registerAuthenticateUntappd } from "./tools/authenticate-untappd.js";
+import { registerGetAuthStatus } from "./tools/get-auth-status.js";
+
 // Search & lookup
 import { registerVenueSearch } from "./tools/venue-search.js";
 import { registerSearchBrewery } from "./tools/search-brewery.js";
@@ -43,6 +47,9 @@ import { registerGetUserBeerStats } from "./tools/get-user-beer-stats.js";
 import { registerGetUserBadgeSummary } from "./tools/get-user-badge-summary.js";
 
 export function registerAllTools(server: McpServer): void {
+  registerAuthenticateUntappd(server);
+  registerGetAuthStatus(server);
+
   registerVenueSearch(server);
   registerSearchBrewery(server);
   registerSearchBeer(server);

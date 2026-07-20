@@ -38,11 +38,11 @@ describe("untappdFetch auth modes", () => {
     expect(calls[0].searchParams.get("access_token")).toBe("test-token");
   });
 
-  it("token mode throws without UNTAPPD_ACCESS_TOKEN", async () => {
+  it("token mode throws without an access token", async () => {
     mockUntappd([{ payload: {} }]);
     await expect(
       untappdFetch("/checkin/recent", {}, { auth: "token" })
-    ).rejects.toThrow("UNTAPPD_ACCESS_TOKEN is required");
+    ).rejects.toThrow("access token is required for this endpoint");
   });
 
   it("throws a clear error when no credentials are configured", async () => {
@@ -52,6 +52,42 @@ describe("untappdFetch auth modes", () => {
     await expect(untappdFetch("/beer/info/1")).rejects.toThrow(
       "Untappd credentials required: set UNTAPPD_CLIENT_ID + UNTAPPD_CLIENT_SECRET, or UNTAPPD_ACCESS_TOKEN"
     );
+  });
+
+  it("falls back to a saved file token in auto mode", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const os = await import("node:os");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "untappd-client-"));
+    process.env.UNTAPPD_TOKEN_PATH = path.join(dir, "token.json");
+    try {
+      const { calls } = mockUntappd([{ payload: {} }, { payload: {} }]);
+
+      // No token anywhere yet: client credentials are used.
+      await untappdFetch("/beer/info/1");
+      expect(calls[0].searchParams.get("client_id")).toBe("test-client-id");
+
+      // A token saved mid-session is picked up on the very next call.
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(
+        process.env.UNTAPPD_TOKEN_PATH,
+        JSON.stringify({ access_token: "file-tok", created_at: "now" })
+      );
+      await untappdFetch("/beer/info/1");
+      expect(calls[1].searchParams.get("access_token")).toBe("file-tok");
+      expect(calls[1].searchParams.get("client_id")).toBeNull();
+
+      // checkAuthRequired also honors the file token.
+      expect(() => checkAuthRequired("get_friend_feed")).not.toThrow();
+
+      // The env var wins over the file.
+      process.env.UNTAPPD_ACCESS_TOKEN = "env-tok";
+      const second = mockUntappd([{ payload: {} }]);
+      await untappdFetch("/beer/info/1");
+      expect(second.calls[0].searchParams.get("access_token")).toBe("env-tok");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("omits undefined params and stringifies the rest", async () => {
@@ -117,7 +153,7 @@ describe("untappdFetch errors and rate limit capture", () => {
 describe("helpers", () => {
   it("checkAuthRequired throws without a token and passes with one", () => {
     expect(() => checkAuthRequired("get_friend_feed")).toThrow(
-      "UNTAPPD_ACCESS_TOKEN is required for get_friend_feed"
+      "access token is required for get_friend_feed"
     );
     process.env.UNTAPPD_ACCESS_TOKEN = "test-token";
     expect(() => checkAuthRequired("get_friend_feed")).not.toThrow();

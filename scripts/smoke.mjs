@@ -1,19 +1,21 @@
 #!/usr/bin/env node
 // Live smoke test: exercises every tool once against the real Untappd API.
-// Requires UNTAPPD_CLIENT_ID + UNTAPPD_CLIENT_SECRET (or UNTAPPD_ACCESS_TOKEN).
-// Authenticated-only tools are skipped when UNTAPPD_ACCESS_TOKEN is absent.
+// Requires UNTAPPD_CLIENT_ID + UNTAPPD_CLIENT_SECRET (or an access token).
+// Authenticated-only tools are skipped when no access token is configured
+// (UNTAPPD_ACCESS_TOKEN env var or saved token file — see: npx untappd-mcp-server auth).
 // Costs ~22 API calls of the 100/hour budget (~28 with a token).
 //
 // Usage: npm run smoke [-- --only=tool_name]
 
 import { registerAllTools } from "../dist/register-tools.js";
 import { getRateLimit } from "../dist/client.js";
+import { resolveAccessToken } from "../dist/auth.js";
 
 const only = process.argv
   .find((a) => a.startsWith("--only="))
   ?.slice("--only=".length);
 
-const hasToken = !!process.env.UNTAPPD_ACCESS_TOKEN;
+const hasToken = !!resolveAccessToken();
 const hasClientCreds = !!(
   process.env.UNTAPPD_CLIENT_ID && process.env.UNTAPPD_CLIENT_SECRET
 );
@@ -139,10 +141,13 @@ await run("get_user_distinct_beers", { username, limit: 5, sort: "checkin" }, us
 await run("get_user_beer_stats", { username, max_pages: 1 }, userSkip);
 await run("get_user_badge_summary", { username, max_pages: 1 }, userSkip);
 
+// --- Auth status (free — no API call) ---
+await run("get_auth_status", {});
+
 // --- Authenticated-only tools ---
 const authSkip = hasToken
   ? {}
-  : { skip: true, reason: "no UNTAPPD_ACCESS_TOKEN" };
+  : { skip: true, reason: "no access token (env or file)" };
 await run("get_friend_feed", { limit: 5 }, authSkip);
 const history = await run(
   "get_user_venue_history",
@@ -155,14 +160,14 @@ await run(
   { venue_id: historyVenue?.venue_id, username, max_pages: 1 },
   hasToken && historyVenue
     ? {}
-    : { skip: true, reason: hasToken ? "no venue in history" : "no UNTAPPD_ACCESS_TOKEN" }
+    : { skip: true, reason: hasToken ? "no venue in history" : "no access token (env or file)" }
 );
 await run(
   "search_venue_then_get_user_stats",
   { q: historyVenue?.venue_name, username, max_pages: 1 },
   hasToken && historyVenue
     ? {}
-    : { skip: true, reason: hasToken ? "no venue in history" : "no UNTAPPD_ACCESS_TOKEN" }
+    : { skip: true, reason: hasToken ? "no venue in history" : "no access token (env or file)" }
 );
 
 // --- Summary ---
