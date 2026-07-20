@@ -31,7 +31,7 @@
           "name": "UNTAPPD_CLIENT_SECRET"
         },
         {
-          "description": "Untappd OAuth access token — unlocks authenticated tools (friend feed, venue history, venue stats) and user-scoped rate limits. Optional: can instead be obtained interactively via the authenticate_untappd tool or `npx untappd-mcp-server auth` (stored in ~/.untappd-mcp-server/token.json)",
+          "description": "Untappd OAuth access token — unlocks the friend feed tool, user-scoped rate limits, and richer /user data. Optional: can instead be obtained interactively via the authenticate_untappd tool or `npx untappd-mcp-server auth` (stored in ~/.untappd-mcp-server/token.json)",
           "isRequired": false,
           "format": "string",
           "isSecret": true,

@@ -416,19 +416,3 @@ export interface TrendingResponse {
     items: TrendingItem[];
   };
 }
-
-export interface VenueHistoryItem {
-  venue: VenueSearchItem;
-  first_checkin_id: number;
-  last_checkin_id: number;
-  total_count: number;
-  first_created_at: string;
-  last_created_at: string;
-}
-
-export interface UserVenueHistoryResponse {
-  venues: {
-    count: number;
-    items: VenueHistoryItem[];
-  };
-}

@@ -3,7 +3,7 @@
 // Requires UNTAPPD_CLIENT_ID + UNTAPPD_CLIENT_SECRET (or an access token).
 // Authenticated-only tools are skipped when no access token is configured
 // (UNTAPPD_ACCESS_TOKEN env var or saved token file — see: npx untappd-mcp-server auth).
-// Costs ~22 API calls of the 100/hour budget (~28 with a token).
+// Costs ~25 API calls of the 100/hour budget (~26 with a token).
 //
 // Usage: npm run smoke [-- --only=tool_name]
 
@@ -131,7 +131,7 @@ const userInfo = await run("get_user_info", { username, compact: true });
 const userSkip = userInfo
   ? {}
   : { skip: true, reason: `username "${username}" did not resolve` };
-await run("get_user_activity", { username, limit: 5 }, userSkip);
+const userActivity = await run("get_user_activity", { username, limit: 5 }, userSkip);
 await run("get_user_badges", { username }, userSkip);
 await run("get_user_friends", { username, limit: 5 }, userSkip);
 await run("get_user_wishlist", { username, limit: 5 }, userSkip);
@@ -141,6 +141,23 @@ await run("get_user_distinct_beers", { username, limit: 5, sort: "checkin" }, us
 await run("get_user_beer_stats", { username, max_pages: 1 }, userSkip);
 await run("get_user_badge_summary", { username, max_pages: 1 }, userSkip);
 
+// Venue-stats composites scan the user's public checkin feed — reuse a venue
+// from their recent activity.
+const activityVenue = userActivity?.checkins?.find((c) => c.venue?.venue_id)?.venue;
+const venueStatsSkip = activityVenue
+  ? {}
+  : { skip: true, reason: userActivity ? "no venue in recent activity" : `username "${username}" did not resolve` };
+await run(
+  "get_user_stats_at_venue",
+  { venue_id: activityVenue?.venue_id, username, max_pages: 1 },
+  venueStatsSkip
+);
+await run(
+  "search_venue_then_get_user_stats",
+  { q: activityVenue?.venue_name, username, max_pages: 1 },
+  venueStatsSkip
+);
+
 // --- Auth status (free — no API call) ---
 await run("get_auth_status", {});
 
@@ -149,26 +166,6 @@ const authSkip = hasToken
   ? {}
   : { skip: true, reason: "no access token (env or file)" };
 await run("get_friend_feed", { limit: 5 }, authSkip);
-const history = await run(
-  "get_user_venue_history",
-  { username, limit: 5 },
-  authSkip
-);
-const historyVenue = history?.venues?.[0]?.venue;
-await run(
-  "get_user_stats_at_venue",
-  { venue_id: historyVenue?.venue_id, username, max_pages: 1 },
-  hasToken && historyVenue
-    ? {}
-    : { skip: true, reason: hasToken ? "no venue in history" : "no access token (env or file)" }
-);
-await run(
-  "search_venue_then_get_user_stats",
-  { q: historyVenue?.venue_name, username, max_pages: 1 },
-  hasToken && historyVenue
-    ? {}
-    : { skip: true, reason: hasToken ? "no venue in history" : "no access token (env or file)" }
-);
 
 // --- Summary ---
 const passed = results.filter((r) => r.status === "pass").length;

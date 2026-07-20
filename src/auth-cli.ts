@@ -62,7 +62,7 @@ export async function runAuthCli(args: string[]): Promise<number> {
       `Authenticated with Untappd — token ${result.maskedToken} saved to ${result.tokenPath}`
     );
     console.log(
-      "The authenticated tools (get_friend_feed, get_user_venue_history, get_user_stats_at_venue, search_venue_then_get_user_stats) are now unlocked."
+      "get_friend_feed is now unlocked, rate limits are user-scoped, and /user endpoints return richer data."
     );
     return 0;
   } catch (err) {

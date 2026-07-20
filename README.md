@@ -4,7 +4,7 @@
 [![npm downloads](https://img.shields.io/npm/dm/untappd-mcp-server)](https://www.npmjs.com/package/untappd-mcp-server)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A Model Context Protocol (MCP) server that exposes the Untappd API as tools for AI agents — **28 tools** covering the full Untappd v4 read API, plus built-in interactive OAuth authentication. Search venues, breweries, and beers; check what's on tap via check-in feeds; explore user badges, friends, wish lists, and drinking history; and aggregate stats — all from any MCP-compatible client.
+A Model Context Protocol (MCP) server that exposes the Untappd API as tools for AI agents — **27 tools** covering the full Untappd v4 read API, plus built-in interactive OAuth authentication. Search venues, breweries, and beers; check what's on tap via check-in feeds; explore user badges, friends, wish lists, and drinking history; and aggregate stats — all from any MCP-compatible client.
 
 ## Prerequisites
 
@@ -202,16 +202,6 @@ Retrieve the recent check-in activity feed for a user.
 | `max_id` | integer | No | Return results older than this checkin ID |
 | `min_id` | integer | No | Return only checkins newer than this ID |
 
-#### get_user_venue_history 🔑 token
-
-Retrieve the venues a user has checked in at, with first/last visit details.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `username` | string | No | Untappd username (defaults to `UNTAPPD_USERNAME`) |
-| `offset` | integer | No | Pagination offset |
-| `limit` | integer | No | Results per page (max 50, default 25) |
-
 #### get_user_distinct_beers
 
 Retrieve the unique beers a user has checked in, with flexible sort ordering. `sort=checkin` with `limit=1` is the single-call pattern for "most-checked-in beer".
@@ -302,17 +292,17 @@ Retrieve extended details for a specific check-in, including badges earned, toas
 
 These tools make multiple API calls (1 per 50 items scanned). They pre-check the remaining rate limit before starting and stop early — setting `truncated: true` in the response — if the budget runs low.
 
-#### get_user_stats_at_venue 🔑 token
+#### get_user_stats_at_venue
 
-Get a user's check-in stats at a specific venue — total check-ins, first/last visit.
+Get a user's check-in stats at a specific venue — visit count, last visit, average rating, top beers — by scanning their recent check-in feed. Untappd's API has no venue-history endpoint, so the stats cover the scanned window (`max_pages` × 25 check-ins), not all time.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `venue_id` | integer | Yes | Untappd venue ID |
 | `username` | string | No | Untappd username (defaults to `UNTAPPD_USERNAME`) |
-| `max_pages` | integer | No | Max venue-history pages to scan at 50/page (default 5) |
+| `max_pages` | integer | No | Max feed pages to scan at 25 check-ins/page (default 5 = 125 check-ins) |
 
-#### search_venue_then_get_user_stats 🔑 token
+#### search_venue_then_get_user_stats
 
 Search for a venue by name, then get the user's check-in stats at the top match.
 
@@ -322,7 +312,7 @@ Search for a venue by name, then get the user's check-in stats at the top match.
 | `username` | string | No | Untappd username (defaults to `UNTAPPD_USERNAME`) |
 | `lat` | number | No | Latitude for location-aware search |
 | `lng` | number | No | Longitude for location-aware search |
-| `max_pages` | integer | No | Max venue-history pages to scan at 50/page (default 5) |
+| `max_pages` | integer | No | Max feed pages to scan at 25 check-ins/page (default 5 = 125 check-ins) |
 
 #### get_user_beer_stats
 
@@ -362,7 +352,7 @@ Composite tools call `assertRateLimitSufficient` before starting pagination and 
 | Mode | Env Vars | Unlocks |
 |------|----------|---------|
 | Public | `UNTAPPD_CLIENT_ID` + `UNTAPPD_CLIENT_SECRET` | All public tools |
-| Authenticated | + `UNTAPPD_ACCESS_TOKEN` (+ optional `UNTAPPD_USERNAME`) | `get_friend_feed`, `get_user_venue_history`, `get_user_stats_at_venue`, `search_venue_then_get_user_stats` |
+| Authenticated | + `UNTAPPD_ACCESS_TOKEN` (+ optional `UNTAPPD_USERNAME`) | `get_friend_feed`, user-scoped rate limits, richer `/user` data |
 
 When an access token is configured (env var or saved token file), the server prefers it for **all** calls — rate limits become user-scoped and `/user` endpoints return richer data. `UNTAPPD_USERNAME` provides a default username for authenticated user tools.
 
@@ -380,7 +370,7 @@ http://localhost:8737/callback
 
 (or the value of `UNTAPPD_REDIRECT_URL` if you override it — it must be a localhost http URL, and the two must match exactly or Untappd rejects the flow).
 
-**In chat:** ask your agent to run the `authenticate_untappd` tool. Your browser opens to Untappd's approve page; once you approve, the token is saved and the four 🔑 tools work immediately — no restart needed.
+**In chat:** ask your agent to run the `authenticate_untappd` tool. Your browser opens to Untappd's approve page; once you approve, the token is saved and the 🔑 tools work immediately — no restart needed.
 
 **In a terminal:**
 
@@ -417,6 +407,7 @@ npx @modelcontextprotocol/inspector node dist/index.js
 
 - **No tap list data** — actual tap lists require an Untappd for Business subscription. Venue check-in feeds serve as a real-time proxy.
 - **No venue events** — Untappd's public API has no events endpoint, and the Eventbrite search API that could have bridged the gap was discontinued; deferred to v3.
+- **No venue-history endpoint** — the v4 API has no per-user venue history; `get_user_stats_at_venue` scans the recent check-in feed instead, so its stats cover a window (`max_pages` × 25 check-ins), not all time.
 - **Rate limit: 100/hour** — minimise redundant calls; every response surfaces `rateLimit.remaining`.
 - **Feed limit caps** — tools accept `limit` up to 50, but the API caps some feeds at 25 server-side.
 - **Global feed requires an elevated key** — `/thepub` (`get_global_feed`) is not authorized for standard API keys; the local feed works with any key.

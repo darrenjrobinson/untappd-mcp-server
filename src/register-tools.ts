@@ -26,7 +26,6 @@ import { registerGetBreweryCheckins } from "./tools/get-brewery-checkins.js";
 // User
 import { registerGetUserInfo } from "./tools/get-user-info.js";
 import { registerGetUserActivity } from "./tools/get-user-activity.js";
-import { registerGetUserVenueHistory } from "./tools/get-user-venue-history.js";
 import { registerGetUserDistinctBeers } from "./tools/get-user-distinct-beers.js";
 import { registerGetUserWishlist } from "./tools/get-user-wishlist.js";
 import { registerGetUserBadges } from "./tools/get-user-badges.js";
@@ -67,7 +66,6 @@ export function registerAllTools(server: McpServer): void {
 
   registerGetUserInfo(server);
   registerGetUserActivity(server);
-  registerGetUserVenueHistory(server);
   registerGetUserDistinctBeers(server);
   registerGetUserWishlist(server);
   registerGetUserBadges(server);

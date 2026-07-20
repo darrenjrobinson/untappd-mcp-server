@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerGetUserInfo } from "../../src/tools/get-user-info.js";
 import { registerGetUserActivity } from "../../src/tools/get-user-activity.js";
-import { registerGetUserVenueHistory } from "../../src/tools/get-user-venue-history.js";
 import { registerGetUserDistinctBeers } from "../../src/tools/get-user-distinct-beers.js";
 import { registerGetUserWishlist } from "../../src/tools/get-user-wishlist.js";
 import { registerGetUserBadges } from "../../src/tools/get-user-badges.js";
@@ -43,41 +42,6 @@ describe("get_user_activity", () => {
     expect(calls[0].pathname).toBe("/v4/user/checkins/tester");
     expect(calls[0].searchParams.get("limit")).toBe("5");
     expectFeedPayload(payload);
-  });
-});
-
-describe("get_user_venue_history", () => {
-  it("throws without UNTAPPD_ACCESS_TOKEN", async () => {
-    const tool = captureTools(registerGetUserVenueHistory)["get_user_venue_history"];
-    mockUntappd([]);
-    await expect(invokeTool(tool, { username: "tester" })).rejects.toThrow(
-      "access token is required for get_user_venue_history"
-    );
-  });
-
-  it("uses token auth and falls back to UNTAPPD_USERNAME", async () => {
-    process.env.UNTAPPD_ACCESS_TOKEN = "test-token";
-    process.env.UNTAPPD_USERNAME = "envuser";
-    const tool = captureTools(registerGetUserVenueHistory)["get_user_venue_history"];
-    const venueItem = {
-      venue: { venue_id: 9, venue_name: "Local" },
-      first_checkin_id: 1,
-      last_checkin_id: 2,
-      total_count: 3,
-      first_created_at: "a",
-      last_created_at: "b",
-    };
-    const { calls } = mockUntappd([
-      { payload: { venues: { count: 1, items: [venueItem] } } },
-    ]);
-
-    const { payload } = await invokeTool(tool, { limit: 25 });
-
-    expect(calls[0].pathname).toBe("/v4/user/venue_history/envuser");
-    expect(calls[0].searchParams.get("access_token")).toBe("test-token");
-    expect(payload.count).toBe(1);
-    expect(payload.venues).toEqual([venueItem]);
-    expect(payload.rateLimit).toEqual(DEFAULT_RATE_LIMIT);
   });
 });
 

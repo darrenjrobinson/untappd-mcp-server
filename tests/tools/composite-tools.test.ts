@@ -44,14 +44,23 @@ function makeBadge(i: number) {
   };
 }
 
-function makeVenueHistoryItem(venueId: number) {
+function makeCheckin(
+  id: number,
+  venueId: number | undefined,
+  overrides: Record<string, unknown> = {}
+) {
   return {
-    venue: { venue_id: venueId, venue_name: `Venue ${venueId}` },
-    first_checkin_id: 10,
-    last_checkin_id: 20,
-    total_count: 7,
-    first_created_at: "2025-01-01",
-    last_created_at: "2026-07-01",
+    checkin_id: id,
+    created_at: `checkin-${id}`,
+    rating_score: 4,
+    checkin_comment: "",
+    beer: { bid: 100, beer_name: "House IPA" },
+    brewery: { brewery_id: 1, brewery_name: "Test Brewing" },
+    user: { uid: 1, user_name: "tester" },
+    venue: venueId
+      ? { venue_id: venueId, venue_name: `Venue ${venueId}` }
+      : undefined,
+    ...overrides,
   };
 }
 
@@ -192,76 +201,122 @@ describe("get_user_badge_summary", () => {
 });
 
 describe("get_user_stats_at_venue", () => {
-  it("throws without UNTAPPD_ACCESS_TOKEN", async () => {
+  it("works without an access token (public checkin feed)", async () => {
     const tool = captureTools(registerGetUserStatsAtVenue)["get_user_stats_at_venue"];
-    mockUntappd([]);
-    await expect(
-      invokeTool(tool, { venue_id: 9, username: "tester" })
-    ).rejects.toThrow("access token is required for get_user_stats_at_venue");
+    const { calls } = mockUntappd([
+      { payload: { checkins: { count: 1, items: [makeCheckin(1, 9)] } } },
+    ]);
+
+    const { payload } = await invokeTool(tool, { venue_id: 9, username: "tester" });
+
+    expect(calls[0].pathname).toBe("/v4/user/checkins/tester");
+    expect(calls[0].searchParams.get("client_id")).toBe("test-client-id");
+    expect(payload.found).toBe(true);
   });
 
-  it("finds the venue in history and returns stats", async () => {
-    process.env.UNTAPPD_ACCESS_TOKEN = "test-token";
+  it("aggregates stats from matching check-ins in the scanned window", async () => {
     const tool = captureTools(registerGetUserStatsAtVenue)["get_user_stats_at_venue"];
+    const items = [
+      makeCheckin(30, 9, { rating_score: 5 }),
+      makeCheckin(29, 5),
+      makeCheckin(28, 9, {
+        rating_score: 3,
+        beer: { bid: 200, beer_name: "Stout One" },
+      }),
+      makeCheckin(27, 9, { rating_score: 0 }),
+      makeCheckin(26, undefined),
+    ];
+    const { calls } = mockUntappd([
+      { payload: { checkins: { count: 5, items } } },
+    ]);
+
+    const { payload } = await invokeTool(tool, { venue_id: 9, username: "tester" });
+
+    expect(calls[0].searchParams.get("limit")).toBe("25");
+    expect(payload.found).toBe(true);
+    expect(payload.stats.venue_name).toBe("Venue 9");
+    expect(payload.stats.checkins_at_venue).toBe(3);
+    expect(payload.stats.last_visit).toBe("checkin-30");
+    expect(payload.stats.earliest_scanned_visit).toBe("checkin-27");
+    expect(payload.stats.avg_rating).toBe(4); // (5 + 3) / 2, zero rating excluded
+    expect(payload.stats.top_beers[0]).toEqual({
+      bid: 100,
+      beer_name: "House IPA",
+      count: 2,
+    });
+    expect(payload.checkins_scanned).toBe(5);
+    expect(payload.truncated).toBe(false);
+    expect(payload.username).toBe("tester");
+    expect(payload.rateLimit).toEqual({ limit: 100, remaining: 87 });
+  });
+
+  it("paginates with max_id until the feed ends", async () => {
+    const tool = captureTools(registerGetUserStatsAtVenue)["get_user_stats_at_venue"];
+    const page1 = Array.from({ length: 25 }, (_, i) => makeCheckin(100 - i, 5));
+    const page2 = [makeCheckin(50, 9)];
     const { calls } = mockUntappd([
       {
         payload: {
-          venues: {
-            count: 2,
-            items: [makeVenueHistoryItem(5), makeVenueHistoryItem(9)],
+          checkins: {
+            count: 25,
+            items: page1,
+            pagination: { since_url: "s", next_url: "n", max_id: 76 },
+          },
+        },
+      },
+      { payload: { checkins: { count: 1, items: page2 } } },
+    ]);
+
+    const { payload } = await invokeTool(tool, { venue_id: 9, username: "tester" });
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0].searchParams.has("max_id")).toBe(false);
+    expect(calls[1].searchParams.get("max_id")).toBe("76");
+    expect(payload.found).toBe(true);
+    expect(payload.checkins_scanned).toBe(26);
+  });
+
+  it("reports not found with a windowed note when max_pages is hit", async () => {
+    const tool = captureTools(registerGetUserStatsAtVenue)["get_user_stats_at_venue"];
+    const page = Array.from({ length: 25 }, (_, i) => makeCheckin(100 - i, 5));
+    mockUntappd([
+      {
+        payload: {
+          checkins: {
+            count: 25,
+            items: page,
+            pagination: { since_url: "s", next_url: "n", max_id: 76 },
           },
         },
       },
     ]);
 
-    const { payload } = await invokeTool(tool, { venue_id: 9, username: "tester" });
-
-    expect(calls[0].pathname).toBe("/v4/user/venue_history/tester");
-    expect(calls[0].searchParams.get("access_token")).toBe("test-token");
-    expect(payload.found).toBe(true);
-    expect(payload.stats).toEqual({
+    const { payload } = await invokeTool(tool, {
       venue_id: 9,
-      venue_name: "Venue 9",
-      total_checkins_at_venue: 7,
-      first_visit: "2025-01-01",
-      last_visit: "2026-07-01",
-      first_checkin_id: 10,
-      last_checkin_id: 20,
+      username: "tester",
+      max_pages: 1,
     });
-    expect(payload.username).toBe("tester");
-    expect(payload.rateLimit).toEqual({ limit: 100, remaining: 87 });
-  });
-
-  it("reports not found after scanning all history", async () => {
-    process.env.UNTAPPD_ACCESS_TOKEN = "test-token";
-    const tool = captureTools(registerGetUserStatsAtVenue)["get_user_stats_at_venue"];
-    mockUntappd([
-      { payload: { venues: { count: 1, items: [makeVenueHistoryItem(5)] } } },
-    ]);
-
-    const { payload } = await invokeTool(tool, { venue_id: 9, username: "tester" });
 
     expect(payload.found).toBe(false);
-    expect(payload.venues_scanned).toBe(1);
-    expect(payload.note).toContain("not found");
+    expect(payload.truncated).toBe(true);
+    expect(payload.note).toContain("25 most recent check-ins");
+    expect(payload.note).toContain("raise max_pages");
+  });
+
+  it("throws before calling the API when the rate limit is exhausted", async () => {
+    const tool = captureTools(registerGetUserStatsAtVenue)["get_user_stats_at_venue"];
+    _setRateLimitForTests({ limit: 100, remaining: 1 });
+    const { calls } = mockUntappd([]);
+
+    await expect(
+      invokeTool(tool, { venue_id: 9, username: "tester" })
+    ).rejects.toThrow("Insufficient rate limit");
+    expect(calls).toHaveLength(0);
   });
 });
 
 describe("search_venue_then_get_user_stats", () => {
-  it("throws without UNTAPPD_ACCESS_TOKEN", async () => {
-    const tool = captureTools(registerSearchVenueThenGetUserStats)[
-      "search_venue_then_get_user_stats"
-    ];
-    mockUntappd([]);
-    await expect(
-      invokeTool(tool, { q: "Test Venue", username: "tester" })
-    ).rejects.toThrow(
-      "access token is required for search_venue_then_get_user_stats"
-    );
-  });
-
-  it("searches, takes the top match, then computes stats", async () => {
-    process.env.UNTAPPD_ACCESS_TOKEN = "test-token";
+  it("searches, takes the top match, then computes stats (no token needed)", async () => {
     const tool = captureTools(registerSearchVenueThenGetUserStats)[
       "search_venue_then_get_user_stats"
     ];
@@ -272,24 +327,40 @@ describe("search_venue_then_get_user_stats", () => {
     };
     const { calls } = mockUntappd([
       { payload: { venues: { count: 1, items: [{ venue: matched }] } } },
-      { payload: { venues: { count: 1, items: [makeVenueHistoryItem(9)] } } },
+      { payload: { checkins: { count: 1, items: [makeCheckin(1, 9)] } } },
     ]);
 
     const { payload } = await invokeTool(tool, { q: "Venue 9", username: "tester" });
 
     expect(calls[0].pathname).toBe("/v4/search/venue");
-    expect(calls[1].pathname).toBe("/v4/user/venue_history/tester");
+    expect(calls[1].pathname).toBe("/v4/user/checkins/tester");
     expect(payload.matched_venue).toEqual({
       venue_id: 9,
       venue_name: "Venue 9",
       location: { venue_city: "Sydney" },
     });
     expect(payload.found).toBe(true);
-    expect(payload.stats.total_checkins_at_venue).toBe(7);
+    expect(payload.stats.checkins_at_venue).toBe(1);
+  });
+
+  it("falls back to UNTAPPD_USERNAME when username is omitted", async () => {
+    process.env.UNTAPPD_USERNAME = "envuser";
+    const tool = captureTools(registerSearchVenueThenGetUserStats)[
+      "search_venue_then_get_user_stats"
+    ];
+    const matched = { venue_id: 9, venue_name: "Venue 9", location: {} };
+    const { calls } = mockUntappd([
+      { payload: { venues: { count: 1, items: [{ venue: matched }] } } },
+      { payload: { checkins: { count: 0, items: [] } } },
+    ]);
+
+    const { payload } = await invokeTool(tool, { q: "Venue 9" });
+
+    expect(calls[1].pathname).toBe("/v4/user/checkins/envuser");
+    expect(payload.username).toBe("envuser");
   });
 
   it("returns a clear note when no venue matches", async () => {
-    process.env.UNTAPPD_ACCESS_TOKEN = "test-token";
     const tool = captureTools(registerSearchVenueThenGetUserStats)[
       "search_venue_then_get_user_stats"
     ];

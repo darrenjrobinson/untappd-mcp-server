@@ -2,7 +2,6 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
   assertRateLimitSufficient,
-  checkAuthRequired,
   resolveUsername,
   untappdFetch,
 } from "../client.js";
@@ -12,7 +11,7 @@ import { computeUserStatsAtVenue } from "./get-user-stats-at-venue.js";
 export function registerSearchVenueThenGetUserStats(server: McpServer) {
   server.tool(
     "search_venue_then_get_user_stats",
-    "Search for a venue by name, then get the user's check-in stats at the top match (requires UNTAPPD_ACCESS_TOKEN; costs 1 search call + venue-history scan)",
+    "Search for a venue by name, then get the user's check-in stats at the top match (1 search call + a scan of the user's recent check-in feed at 25/page)",
     {
       q: z.string().describe("Venue search query (venue name)"),
       username: z
@@ -25,12 +24,13 @@ export function registerSearchVenueThenGetUserStats(server: McpServer) {
         .number()
         .int()
         .min(1)
-        .max(10)
+        .max(20)
         .optional()
-        .describe("Max venue-history pages to scan at 50/page (default 5)"),
+        .describe(
+          "Max feed pages to scan at 25 check-ins/page (default 5 = 125 check-ins)"
+        ),
     },
     async ({ q, username, lat, lng, max_pages }) => {
-      checkAuthRequired("search_venue_then_get_user_stats");
       const resolved = resolveUsername(
         username,
         "search_venue_then_get_user_stats"

@@ -24,7 +24,6 @@ const EXPECTED_TOOLS = [
   // User
   "get_user_info",
   "get_user_activity",
-  "get_user_venue_history",
   "get_user_distinct_beers",
   "get_user_wishlist",
   "get_user_badges",
@@ -43,10 +42,10 @@ const EXPECTED_TOOLS = [
 ];
 
 describe("registerAllTools", () => {
-  it("registers exactly the expected 28 tools", () => {
+  it("registers exactly the expected 27 tools", () => {
     const tools = captureTools(registerAllTools);
     const names = Object.keys(tools);
-    expect(names).toHaveLength(28);
+    expect(names).toHaveLength(27);
     expect(names.sort()).toEqual([...EXPECTED_TOOLS].sort());
   });
 

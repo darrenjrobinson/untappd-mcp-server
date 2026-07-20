@@ -2,74 +2,72 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
   assertRateLimitSufficient,
-  checkAuthRequired,
   getRateLimit,
   resolveUsername,
   untappdFetch,
 } from "../client.js";
-import { RateLimitInfo, UserVenueHistoryResponse } from "../types.js";
+import {
+  CheckinItem,
+  RateLimitInfo,
+  VenueCheckinsResponse,
+} from "../types.js";
 
-const PAGE_SIZE = 50;
+// The user checkins feed caps at 25 results per call.
+const PAGE_SIZE = 25;
 
 export interface UserVenueStatsResult {
   found: boolean;
   stats?: {
     venue_id: number;
     venue_name: string;
-    total_checkins_at_venue: number;
-    first_visit: string;
+    checkins_at_venue: number;
     last_visit: string;
-    first_checkin_id: number;
-    last_checkin_id: number;
+    earliest_scanned_visit: string;
+    avg_rating: number | null;
+    top_beers: Array<{ bid?: number; beer_name?: string; count: number }>;
   };
   note?: string;
-  venues_scanned: number;
+  checkins_scanned: number;
   pages_fetched: number;
   truncated: boolean;
   rateLimit: RateLimitInfo;
 }
 
+/**
+ * Scan a user's recent check-in feed (newest first, 25 per API call) for
+ * check-ins at the given venue and aggregate stats over the scanned window.
+ * The Untappd v4 API has no venue-history endpoint, so this is a windowed
+ * scan — `truncated: true` means older check-ins were not examined.
+ */
 export async function computeUserStatsAtVenue(
   username: string,
   venueId: number,
   maxPages: number
 ): Promise<UserVenueStatsResult> {
-  let venuesScanned = 0;
+  const matches: CheckinItem[] = [];
+  let checkinsScanned = 0;
   let pagesFetched = 0;
   let truncated = false;
+  let maxId: number | undefined;
 
   for (let page = 0; page < maxPages; page++) {
-    const { data, rateLimit } = await untappdFetch<UserVenueHistoryResponse>(
-      `/user/venue_history/${encodeURIComponent(username)}`,
-      { offset: page * PAGE_SIZE, limit: PAGE_SIZE },
-      { auth: "token" }
+    const { data, rateLimit } = await untappdFetch<VenueCheckinsResponse>(
+      `/user/checkins/${encodeURIComponent(username)}`,
+      { limit: PAGE_SIZE, max_id: maxId }
     );
     pagesFetched++;
 
-    const pageItems = data.venues?.items ?? [];
-    venuesScanned += pageItems.length;
+    const items = data.checkins?.items ?? [];
+    checkinsScanned += items.length;
+    matches.push(...items.filter((c) => c.venue?.venue_id === venueId));
 
-    const match = pageItems.find((v) => v.venue?.venue_id === venueId);
-    if (match) {
-      return {
-        found: true,
-        stats: {
-          venue_id: match.venue.venue_id,
-          venue_name: match.venue.venue_name,
-          total_checkins_at_venue: match.total_count,
-          first_visit: match.first_created_at,
-          last_visit: match.last_created_at,
-          first_checkin_id: match.first_checkin_id,
-          last_checkin_id: match.last_checkin_id,
-        },
-        venues_scanned: venuesScanned,
-        pages_fetched: pagesFetched,
-        truncated,
-        rateLimit,
-      };
+    if (items.length < PAGE_SIZE) {
+      break;
     }
-
-    if (pageItems.length < PAGE_SIZE) {
+    maxId =
+      data.checkins?.pagination?.max_id ??
+      items[items.length - 1]?.checkin_id;
+    if (!maxId) {
       break;
     }
     if (rateLimit.remaining <= 1) {
@@ -81,12 +79,53 @@ export async function computeUserStatsAtVenue(
     }
   }
 
+  if (matches.length === 0) {
+    return {
+      found: false,
+      note: `No check-ins at venue ${venueId} found in the user's ${checkinsScanned} most recent check-ins${truncated ? " (scan stopped early — raise max_pages to look further back)" : ""}`,
+      checkins_scanned: checkinsScanned,
+      pages_fetched: pagesFetched,
+      truncated,
+      rateLimit: getRateLimit(),
+    };
+  }
+
+  const rated = matches.filter((c) => c.rating_score > 0);
+  const beerCounts = new Map<
+    string,
+    { bid?: number; beer_name?: string; count: number }
+  >();
+  for (const c of matches) {
+    const key = String(c.beer?.bid ?? c.beer?.beer_name ?? "unknown");
+    const entry = beerCounts.get(key) ?? {
+      bid: c.beer?.bid,
+      beer_name: c.beer?.beer_name,
+      count: 0,
+    };
+    entry.count++;
+    beerCounts.set(key, entry);
+  }
+  const topBeers = [...beerCounts.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
   return {
-    found: false,
-    note: truncated
-      ? `Venue ${venueId} not found in the first ${venuesScanned} venues scanned (stopped early — raise max_pages or check rate limit)`
-      : `Venue ${venueId} not found in the user's venue history (${venuesScanned} venues scanned)`,
-    venues_scanned: venuesScanned,
+    found: true,
+    stats: {
+      venue_id: venueId,
+      venue_name: matches[0].venue?.venue_name ?? `venue ${venueId}`,
+      checkins_at_venue: matches.length,
+      last_visit: matches[0].created_at,
+      earliest_scanned_visit: matches[matches.length - 1].created_at,
+      avg_rating: rated.length
+        ? Math.round(
+            (rated.reduce((sum, c) => sum + c.rating_score, 0) / rated.length) *
+              100
+          ) / 100
+        : null,
+      top_beers: topBeers,
+    },
+    checkins_scanned: checkinsScanned,
     pages_fetched: pagesFetched,
     truncated,
     rateLimit: getRateLimit(),
@@ -96,7 +135,7 @@ export async function computeUserStatsAtVenue(
 export function registerGetUserStatsAtVenue(server: McpServer) {
   server.tool(
     "get_user_stats_at_venue",
-    "Get a user's check-in stats at a specific venue — total check-ins, first/last visit (requires UNTAPPD_ACCESS_TOKEN; scans venue history at 1 API call per 50 venues)",
+    "Get a user's check-in stats at a specific venue — visit count, last visit, average rating, top beers — by scanning their recent check-in feed (1 API call per 25 check-ins scanned; the stats cover the scanned window, not all time)",
     {
       venue_id: z.number().int().describe("Untappd venue ID"),
       username: z
@@ -107,12 +146,13 @@ export function registerGetUserStatsAtVenue(server: McpServer) {
         .number()
         .int()
         .min(1)
-        .max(10)
+        .max(20)
         .optional()
-        .describe("Max venue-history pages to scan at 50/page (default 5)"),
+        .describe(
+          "Max feed pages to scan at 25 check-ins/page (default 5 = 125 check-ins)"
+        ),
     },
     async ({ venue_id, username, max_pages }) => {
-      checkAuthRequired("get_user_stats_at_venue");
       const resolved = resolveUsername(username, "get_user_stats_at_venue");
       assertRateLimitSufficient(2);
 
