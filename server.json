@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.darrenjrobinson/untappd",
-  "description": "MCP server exposing Untappd API tools for AI agents",
+  "description": "MCP server exposing Untappd API tools for AI agents — full v4 read API coverage",
   "repository": {
     "url": "https://github.com/darrenjrobinson/untappd-mcp-server",
     "source": "github"
   },
-  "version": "1.0.3",
+  "version": "2.0.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "untappd-mcp-server",
-      "version": "1.0.3",
+      "version": "2.0.0",
       "transport": {
         "type": "stdio"
       },
@@ -29,6 +29,20 @@
           "format": "string",
           "isSecret": true,
           "name": "UNTAPPD_CLIENT_SECRET"
+        },
+        {
+          "description": "Untappd OAuth access token — unlocks authenticated tools (friend feed, venue history, venue stats) and user-scoped rate limits",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true,
+          "name": "UNTAPPD_ACCESS_TOKEN"
+        },
+        {
+          "description": "Default username for authenticated user tools",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "UNTAPPD_USERNAME"
         }
       ]
     }

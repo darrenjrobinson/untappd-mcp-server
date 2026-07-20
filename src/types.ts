@@ -276,3 +276,159 @@ export interface RateLimitInfo {
   limit: number;
   remaining: number;
 }
+
+export interface BadgeImage {
+  sm: string;
+  md: string;
+  lg: string;
+}
+
+export interface BadgeItem {
+  badge_id: number;
+  user_badge_id?: number;
+  badge_name: string;
+  badge_description: string;
+  badge_image: BadgeImage;
+  created_at: string;
+  checkin_id?: number;
+}
+
+export interface UserBadgesResponse {
+  badges: {
+    count: number;
+    items: BadgeItem[];
+  };
+}
+
+export interface FriendUser {
+  uid: number;
+  user_name: string;
+  first_name: string;
+  last_name: string;
+  user_avatar: string;
+  location?: string;
+  relationship?: string;
+  stats?: {
+    total_badges: number;
+    total_friends: number;
+    total_checkins: number;
+    total_beers: number;
+    total_created_beers?: number;
+  };
+}
+
+export interface UserFriendsResponse {
+  found: number;
+  items: Array<{
+    friendship_hash: string;
+    created_at: string;
+    user: FriendUser;
+  }>;
+}
+
+export interface WishlistItem {
+  created_at: string;
+  beer: BeerSimple;
+  brewery: BrewerySimple;
+}
+
+export interface UserWishlistResponse {
+  beers: {
+    count: number;
+    items: WishlistItem[];
+  };
+}
+
+export interface DistinctBeerItem {
+  first_checkin_id: number;
+  recent_checkin_id: number;
+  first_created_at: string;
+  recent_created_at: string;
+  rating_score: number;
+  count: number;
+  beer: BeerSimple;
+  brewery: BrewerySimple;
+}
+
+export interface UserBeersResponse {
+  total_count?: number;
+  beers: {
+    count: number;
+    items: DistinctBeerItem[];
+  };
+}
+
+export interface FoursquareLookupResponse {
+  venue: {
+    count: number;
+    items: VenueSearchItem[];
+  };
+}
+
+export interface ToastItem {
+  uid: number;
+  user: FriendUser;
+  like_owner?: boolean;
+  created_at: string;
+}
+
+export interface CommentItem {
+  user: FriendUser;
+  checkin_comment_id: number;
+  comment: string;
+  created_at: string;
+}
+
+export interface CheckinDetail extends CheckinItem {
+  badges?: {
+    count: number;
+    items: BadgeItem[];
+  };
+  toasts?: {
+    total_count?: number;
+    count: number;
+    items: ToastItem[];
+  };
+  comments?: {
+    total_count?: number;
+    count: number;
+    items: CommentItem[];
+  };
+}
+
+export interface CheckinViewResponse {
+  checkin: CheckinDetail;
+}
+
+export interface TrendingItem {
+  checkin_count?: number;
+  beer: BeerSimple;
+  brewery: BrewerySimple;
+}
+
+export interface TrendingResponse {
+  macro: {
+    count: number;
+    items: TrendingItem[];
+  };
+  micro: {
+    count: number;
+    items: TrendingItem[];
+  };
+}
+
+export interface VenueHistoryItem {
+  venue: VenueSearchItem;
+  first_checkin_id: number;
+  last_checkin_id: number;
+  total_count: number;
+  first_created_at: string;
+  last_created_at: string;
+}
+
+export interface UserVenueHistoryResponse {
+  venues: {
+    count: number;
+    items: VenueHistoryItem[];
+  };
+}

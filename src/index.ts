@@ -2,30 +2,26 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { registerVenueSearch } from "./tools/venue-search.js";
-import { registerGetVenueInfo } from "./tools/get-venue-info.js";
-import { registerGetVenueCheckins } from "./tools/get-venue-checkins.js";
-import { registerSearchBrewery } from "./tools/search-brewery.js";
-import { registerGetBreweryInfo } from "./tools/get-brewery-info.js";
-import { registerSearchBeer } from "./tools/search-beer.js";
-import { registerGetBeerInfo } from "./tools/get-beer-info.js";
-import { registerGetUserInfo } from "./tools/get-user-info.js";
-import { registerGetUserActivity } from "./tools/get-user-activity.js";
+import { registerAllTools } from "./register-tools.js";
+
+const hasClientCreds = !!(
+  process.env.UNTAPPD_CLIENT_ID && process.env.UNTAPPD_CLIENT_SECRET
+);
+const hasToken = !!process.env.UNTAPPD_ACCESS_TOKEN;
+
+if (!hasClientCreds && !hasToken) {
+  console.error(
+    "Missing Untappd credentials: set UNTAPPD_CLIENT_ID + UNTAPPD_CLIENT_SECRET, or UNTAPPD_ACCESS_TOKEN"
+  );
+  process.exit(1);
+}
 
 const server = new McpServer({
   name: "untappd-mcp-server",
-  version: "1.0.0",
+  version: "2.0.0",
 });
 
-registerVenueSearch(server);
-registerGetVenueInfo(server);
-registerGetVenueCheckins(server);
-registerSearchBrewery(server);
-registerGetBreweryInfo(server);
-registerSearchBeer(server);
-registerGetBeerInfo(server);
-registerGetUserInfo(server);
-registerGetUserActivity(server);
+registerAllTools(server);
 
 async function main() {
   const transport = new StdioServerTransport();

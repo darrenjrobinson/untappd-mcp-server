@@ -8,22 +8,75 @@ export function getRateLimit(): RateLimitInfo {
   return { ...lastRateLimit };
 }
 
+export function _setRateLimitForTests(info: RateLimitInfo): void {
+  lastRateLimit = { ...info };
+}
+
+export type AuthMode = "auto" | "token";
+
+/**
+ * Throws if UNTAPPD_ACCESS_TOKEN is not configured. Call at the top of
+ * authenticated-only tool handlers for a clear error instead of an API 401.
+ */
+export function checkAuthRequired(toolName: string): void {
+  if (!process.env.UNTAPPD_ACCESS_TOKEN) {
+    throw new Error(`UNTAPPD_ACCESS_TOKEN is required for ${toolName}`);
+  }
+}
+
+/**
+ * Throws if the last-observed rate limit is below `needed`. Starts optimistic
+ * (100/100) before the first API call of the session.
+ */
+export function assertRateLimitSufficient(needed: number): void {
+  if (lastRateLimit.remaining < needed) {
+    throw new Error(
+      `Insufficient rate limit: ${lastRateLimit.remaining} calls remaining, at least ${needed} needed. Untappd limit resets hourly.`
+    );
+  }
+}
+
+export function resolveUsername(
+  username: string | undefined,
+  toolName: string
+): string {
+  const resolved = username ?? process.env.UNTAPPD_USERNAME;
+  if (!resolved) {
+    throw new Error(
+      `${toolName} requires a username parameter or the UNTAPPD_USERNAME env var`
+    );
+  }
+  return resolved;
+}
+
 export async function untappdFetch<T>(
   path: string,
-  params: Record<string, string | number | boolean | undefined> = {}
+  params: Record<string, string | number | boolean | undefined> = {},
+  opts: { auth?: AuthMode } = {}
 ): Promise<{ data: T; rateLimit: RateLimitInfo }> {
+  const accessToken = process.env.UNTAPPD_ACCESS_TOKEN;
   const clientId = process.env.UNTAPPD_CLIENT_ID;
   const clientSecret = process.env.UNTAPPD_CLIENT_SECRET;
 
-  if (!clientId || !clientSecret) {
+  const url = new URL(`${BASE_URL}${path}`);
+
+  if (opts.auth === "token") {
+    if (!accessToken) {
+      throw new Error("UNTAPPD_ACCESS_TOKEN is required for this endpoint");
+    }
+    url.searchParams.set("access_token", accessToken);
+  } else if (accessToken) {
+    // Prefer the access token when configured: user-scoped rate limits and
+    // richer /user payloads.
+    url.searchParams.set("access_token", accessToken);
+  } else if (clientId && clientSecret) {
+    url.searchParams.set("client_id", clientId);
+    url.searchParams.set("client_secret", clientSecret);
+  } else {
     throw new Error(
-      "UNTAPPD_CLIENT_ID and UNTAPPD_CLIENT_SECRET are required"
+      "Untappd credentials required: set UNTAPPD_CLIENT_ID + UNTAPPD_CLIENT_SECRET, or UNTAPPD_ACCESS_TOKEN"
     );
   }
-
-  const url = new URL(`${BASE_URL}${path}`);
-  url.searchParams.set("client_id", clientId);
-  url.searchParams.set("client_secret", clientSecret);
 
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined) {
@@ -55,7 +108,9 @@ export async function untappdFetch<T>(
   const rateLimit = getRateLimit();
 
   if (response.status === 401) {
-    throw new Error("Invalid API credentials");
+    throw new Error(
+      "Invalid API credentials (check client_id/client_secret or access_token)"
+    );
   }
   if (response.status === 404) {
     throw new Error("Resource not found");
