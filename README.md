@@ -290,7 +290,7 @@ Retrieve extended details for a specific check-in, including badges earned, toas
 
 ### Composite / Aggregation
 
-These tools make multiple API calls (1 per 50 items scanned). They pre-check the remaining rate limit before starting and stop early — setting `truncated: true` in the response — if the budget runs low.
+These tools make multiple API calls (1 per page scanned — 50 beers/badges, 25 check-ins). They pre-check the remaining rate limit before starting and stop early — setting `truncated: true` in the response — if the budget runs low.
 
 #### get_user_stats_at_venue
 
@@ -392,7 +392,7 @@ npx untappd-mcp-server auth --clear    # delete the saved token
 npm install
 npm run build
 npm test          # unit tests (mocked API — no rate limit cost)
-npm run smoke     # live smoke test against the real API (~22 calls, ~28 with a token)
+npm run smoke     # live smoke test against the real API (~25 calls, ~26 with a token)
 ```
 
 The smoke test uses your `UNTAPPD_*` env vars, skips authenticated tools when no access token is set, and aborts if the remaining rate limit drops below 5. Filter to a single tool with `npm run smoke -- --only=tool_name`.
