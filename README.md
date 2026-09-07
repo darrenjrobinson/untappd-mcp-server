@@ -8,7 +8,7 @@ A Model Context Protocol (MCP) server that exposes the Untappd API as tools for 
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 20+
 - Untappd API credentials (`client_id` and `client_secret`) from [untappd.com/api](https://untappd.com/api)
 - Optional: an Untappd OAuth access token to unlock authenticated tools — obtainable in-chat via the `authenticate_untappd` tool or `npx untappd-mcp-server auth` (see [Interactive Authentication](#interactive-authentication))
 

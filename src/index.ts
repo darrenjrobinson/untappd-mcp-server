@@ -6,6 +6,11 @@ import { runAuthCli } from "./auth-cli.js";
 import { resolveAccessToken } from "./auth.js";
 import { registerAllTools } from "./register-tools.js";
 
+// Single source of truth for the version is package.json (also gated by the
+// publish workflow). Output is CommonJS, so a runtime require resolves
+// ../package.json from both dist/ and src/ (ts-node).
+const { version } = require("../package.json") as { version: string };
+
 if (process.argv[2] === "auth") {
   runAuthCli(process.argv.slice(3)).then(
     (code) => process.exit(code),
@@ -29,7 +34,7 @@ if (process.argv[2] === "auth") {
 
   const server = new McpServer({
     name: "untappd-mcp-server",
-    version: "2.0.0",
+    version,
   });
 
   registerAllTools(server);
