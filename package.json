@@ -21,10 +21,10 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "@types/node": "^20.0.0",
+    "typescript": "^7.0.2",
+    "@types/node": "^26.4.1",
     "ts-node": "^10.0.0",
-    "vitest": "^3.2.4"
+    "vitest": "^5.0.0"
   },
   "files": [
     "dist"
