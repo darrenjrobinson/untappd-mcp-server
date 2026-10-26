@@ -1,16 +1,19 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { untappdFetch } from "../client.js";
 import { TrendingResponse } from "../types.js";
+import { z } from "zod";
 
 export function registerGetTrendingBeers(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "get_trending_beers",
-    "Retrieve globally trending beers on Untappd (macro and micro brew lists, by recent check-in velocity)",
-    {},
+    {
+      description:
+        "Retrieve globally trending beers on Untappd (macro and micro brew lists, by recent check-in velocity)",
+      inputSchema: z.object({}),
+    },
     async () => {
-      const { data, rateLimit } = await untappdFetch<TrendingResponse>(
-        "/beer/trending"
-      );
+      const { data, rateLimit } =
+        await untappdFetch<TrendingResponse>("/beer/trending");
 
       return {
         content: [

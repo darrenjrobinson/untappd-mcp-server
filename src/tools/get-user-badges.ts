@@ -1,20 +1,23 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { untappdFetch } from "../client.js";
 import { UserBadgesResponse } from "../types.js";
 
 export function registerGetUserBadges(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "get_user_badges",
-    "Retrieve a user's earned badges (returned in pages of 50, most recent first)",
     {
-      username: z.string().describe("Untappd username"),
-      offset: z
-        .number()
-        .int()
-        .min(0)
-        .optional()
-        .describe("Pagination offset (badges are returned in pages of 50)"),
+      description:
+        "Retrieve a user's earned badges (returned in pages of 50, most recent first)",
+      inputSchema: z.object({
+        username: z.string().describe("Untappd username"),
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .optional()
+          .describe("Pagination offset (badges are returned in pages of 50)"),
+      }),
     },
     async ({ username, offset }) => {
       const { data, rateLimit } = await untappdFetch<UserBadgesResponse>(

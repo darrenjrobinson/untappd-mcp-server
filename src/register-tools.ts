@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 
 // Auth
 import { registerAuthenticateUntappd } from "./tools/authenticate-untappd.js";

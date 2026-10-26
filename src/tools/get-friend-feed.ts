@@ -1,30 +1,35 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { checkAuthRequired, untappdFetch } from "../client.js";
 import { VenueCheckinsResponse } from "../types.js";
 
 export function registerGetFriendFeed(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "get_friend_feed",
-    "Retrieve the friend check-in feed for the authenticated user (requires UNTAPPD_ACCESS_TOKEN)",
     {
-      limit: z
-        .number()
-        .int()
-        .min(1)
-        .max(50)
-        .optional()
-        .describe("Results per page (max 50, default 25 — the API may cap some feeds at 25)"),
-      max_id: z
-        .number()
-        .int()
-        .optional()
-        .describe("Return results older than this checkin ID"),
-      min_id: z
-        .number()
-        .int()
-        .optional()
-        .describe("Return only checkins newer than this ID"),
+      description:
+        "Retrieve the friend check-in feed for the authenticated user (requires UNTAPPD_ACCESS_TOKEN)",
+      inputSchema: z.object({
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(50)
+          .optional()
+          .describe(
+            "Results per page (max 50, default 25 — the API may cap some feeds at 25)"
+          ),
+        max_id: z
+          .number()
+          .int()
+          .optional()
+          .describe("Return results older than this checkin ID"),
+        min_id: z
+          .number()
+          .int()
+          .optional()
+          .describe("Return only checkins newer than this ID"),
+      }),
     },
     async ({ limit, max_id, min_id }) => {
       checkAuthRequired("get_friend_feed");

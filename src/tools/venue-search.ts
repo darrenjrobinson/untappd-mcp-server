@@ -1,16 +1,25 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { untappdFetch } from "../client.js";
 import { VenueSearchResponse } from "../types.js";
 
 export function registerVenueSearch(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "venue_search",
-    "Search for venues (breweries, bars, restaurants) by name, with optional location awareness",
     {
-      q: z.string().describe("Search query (venue name)"),
-      lat: z.number().optional().describe("Latitude for location-aware results"),
-      lng: z.number().optional().describe("Longitude for location-aware results"),
+      description:
+        "Search for venues (breweries, bars, restaurants) by name, with optional location awareness",
+      inputSchema: z.object({
+        q: z.string().describe("Search query (venue name)"),
+        lat: z
+          .number()
+          .optional()
+          .describe("Latitude for location-aware results"),
+        lng: z
+          .number()
+          .optional()
+          .describe("Longitude for location-aware results"),
+      }),
     },
     async ({ q, lat, lng }) => {
       const { data, rateLimit } = await untappdFetch<VenueSearchResponse>(

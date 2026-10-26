@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import {
   assertRateLimitSufficient,
@@ -10,18 +10,23 @@ import { BadgeItem, UserBadgesResponse } from "../types.js";
 const PAGE_SIZE = 50;
 
 export function registerGetUserBadgeSummary(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "get_user_badge_summary",
-    "Retrieve all badges for a user (paginating to completion) with a structured summary (costs 1 API call per 50 badges)",
     {
-      username: z.string().describe("Untappd username"),
-      max_pages: z
-        .number()
-        .int()
-        .min(1)
-        .max(20)
-        .optional()
-        .describe("Max pages to scan at 50 badges/page (default 10 = 500 badges)"),
+      description:
+        "Retrieve all badges for a user (paginating to completion) with a structured summary (costs 1 API call per 50 badges)",
+      inputSchema: z.object({
+        username: z.string().describe("Untappd username"),
+        max_pages: z
+          .number()
+          .int()
+          .min(1)
+          .max(20)
+          .optional()
+          .describe(
+            "Max pages to scan at 50 badges/page (default 10 = 500 badges)"
+          ),
+      }),
     },
     async ({ username, max_pages }) => {
       const maxPages = max_pages ?? 10;

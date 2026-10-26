@@ -1,14 +1,17 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { untappdFetch } from "../client.js";
 import { CheckinViewResponse } from "../types.js";
 
 export function registerGetCheckinInfo(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "get_checkin_info",
-    "Retrieve extended details for a specific check-in, including badges earned, toasts, and comments",
     {
-      checkin_id: z.number().int().describe("Untappd check-in ID"),
+      description:
+        "Retrieve extended details for a specific check-in, including badges earned, toasts, and comments",
+      inputSchema: z.object({
+        checkin_id: z.number().int().describe("Untappd check-in ID"),
+      }),
     },
     async ({ checkin_id }) => {
       const { data, rateLimit } = await untappdFetch<CheckinViewResponse>(

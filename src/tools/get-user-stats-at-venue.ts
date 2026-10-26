@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import {
   assertRateLimitSufficient,
@@ -6,11 +6,7 @@ import {
   resolveUsername,
   untappdFetch,
 } from "../client.js";
-import {
-  CheckinItem,
-  RateLimitInfo,
-  VenueCheckinsResponse,
-} from "../types.js";
+import { CheckinItem, RateLimitInfo, VenueCheckinsResponse } from "../types.js";
 
 // The user checkins feed caps at 25 results per call.
 const PAGE_SIZE = 25;
@@ -65,8 +61,7 @@ export async function computeUserStatsAtVenue(
       break;
     }
     maxId =
-      data.checkins?.pagination?.max_id ??
-      items[items.length - 1]?.checkin_id;
+      data.checkins?.pagination?.max_id ?? items[items.length - 1]?.checkin_id;
     if (!maxId) {
       break;
     }
@@ -133,24 +128,27 @@ export async function computeUserStatsAtVenue(
 }
 
 export function registerGetUserStatsAtVenue(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "get_user_stats_at_venue",
-    "Get a user's check-in stats at a specific venue — visit count, last visit, average rating, top beers — by scanning their recent check-in feed (1 API call per 25 check-ins scanned; the stats cover the scanned window, not all time)",
     {
-      venue_id: z.number().int().describe("Untappd venue ID"),
-      username: z
-        .string()
-        .optional()
-        .describe("Untappd username (defaults to UNTAPPD_USERNAME env var)"),
-      max_pages: z
-        .number()
-        .int()
-        .min(1)
-        .max(20)
-        .optional()
-        .describe(
-          "Max feed pages to scan at 25 check-ins/page (default 5 = 125 check-ins)"
-        ),
+      description:
+        "Get a user's check-in stats at a specific venue — visit count, last visit, average rating, top beers — by scanning their recent check-in feed (1 API call per 25 check-ins scanned; the stats cover the scanned window, not all time)",
+      inputSchema: z.object({
+        venue_id: z.number().int().describe("Untappd venue ID"),
+        username: z
+          .string()
+          .optional()
+          .describe("Untappd username (defaults to UNTAPPD_USERNAME env var)"),
+        max_pages: z
+          .number()
+          .int()
+          .min(1)
+          .max(20)
+          .optional()
+          .describe(
+            "Max feed pages to scan at 25 check-ins/page (default 5 = 125 check-ins)"
+          ),
+      }),
     },
     async ({ venue_id, username, max_pages }) => {
       const resolved = resolveUsername(username, "get_user_stats_at_venue");

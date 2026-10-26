@@ -1,17 +1,22 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { untappdFetch } from "../client.js";
 
 export function registerGetUserInfo(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "get_user_info",
-    "Retrieve profile and stats for a specific Untappd user by username",
     {
-      username: z.string().describe("Untappd username to look up"),
-      compact: z
-        .boolean()
-        .optional()
-        .describe("If true, returns user info only (no checkins, media, recent brews). Default: false"),
+      description:
+        "Retrieve profile and stats for a specific Untappd user by username",
+      inputSchema: z.object({
+        username: z.string().describe("Untappd username to look up"),
+        compact: z
+          .boolean()
+          .optional()
+          .describe(
+            "If true, returns user info only (no checkins, media, recent brews). Default: false"
+          ),
+      }),
     },
     async ({ username, compact }) => {
       const params: Record<string, string | number | boolean | undefined> = {};

@@ -1,18 +1,20 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { untappdFetch } from "../client.js";
 import { BeerInfoResponse } from "../types.js";
 
 export function registerGetBeerInfo(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "get_beer_info",
-    "Retrieve detailed information for a specific beer",
     {
-      bid: z.number().int().describe("Untappd beer ID"),
-      compact: z
-        .boolean()
-        .optional()
-        .describe("If true, returns beer info only. Default: false"),
+      description: "Retrieve detailed information for a specific beer",
+      inputSchema: z.object({
+        bid: z.number().int().describe("Untappd beer ID"),
+        compact: z
+          .boolean()
+          .optional()
+          .describe("If true, returns beer info only. Default: false"),
+      }),
     },
     async ({ bid, compact }) => {
       const params: Record<string, string | number | boolean | undefined> = {};

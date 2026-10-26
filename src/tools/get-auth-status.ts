@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { getTokenFilePath, maskToken, resolveAccessToken } from "../auth.js";
 import { untappdFetch } from "../client.js";
@@ -6,16 +6,19 @@ import { untappdFetch } from "../client.js";
 const AUTHENTICATED_TOOLS = ["get_friend_feed"];
 
 export function registerGetAuthStatus(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "get_auth_status",
-    "Report Untappd authentication status: whether an access token is configured, its source (UNTAPPD_ACCESS_TOKEN env var or the saved token file), the token file path, and whether the authenticated tools are unlocked. Free (no API call) by default; set validate:true to verify the token with one authenticated API call (costs 1 rate-limit call).",
     {
-      validate: z
-        .boolean()
-        .optional()
-        .describe(
-          "Verify the token against the Untappd API with one call (default false)"
-        ),
+      description:
+        "Report Untappd authentication status: whether an access token is configured, its source (UNTAPPD_ACCESS_TOKEN env var or the saved token file), the token file path, and whether the authenticated tools are unlocked. Free (no API call) by default; set validate:true to verify the token with one authenticated API call (costs 1 rate-limit call).",
+      inputSchema: z.object({
+        validate: z
+          .boolean()
+          .optional()
+          .describe(
+            "Verify the token against the Untappd API with one call (default false)"
+          ),
+      }),
     },
     async ({ validate }) => {
       const resolved = resolveAccessToken();
