@@ -57,33 +57,42 @@ jobs:
             exit 1
           fi
 
-      # Skipped when the version is already on npm, so "Re-run failed jobs"
-      # works after a later step (e.g. the MCP Registry) fails.
+      # Idempotent: a re-run after a partial release must not fail here, because
+      # npm rejects publishing over an existing version with E403.
+      #
+      # The check reads registry.npmjs.org directly rather than using `npm view`,
+      # which is served through a cache that can report a stale version list.
       - name: Publish to npm
         run: |
+          TAG="${GITHUB_REF_NAME#v}"
           NAME=$(node -p "require('./package.json').name")
-          VERSION=$(node -p "require('./package.json').version")
-          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
-            echo "$NAME@$VERSION is already on npm — skipping publish."
+          CODE=$(curl -sS -o /dev/null -w '%{http_code}' -H 'Cache-Control: no-cache' \
+            "https://registry.npmjs.org/$NAME/$TAG" || echo 000)
+          if [ "$CODE" = "200" ]; then
+            echo "npm already has $NAME@$TAG — skipping publish."
           else
             npm publish
           fi
 
-      # The MCP Registry validates the package against npm, and a fresh publish
-      # can take a minute or two to become visible (v2.1.0 failed with a 404).
+      # npm warns on publish that the package "may take a few minutes to become
+      # available". mcp-publisher rejects a server whose npm version 404s, so
+      # handing off immediately is a race — it failed for v2.1.0 seconds after
+      # npm accepted the publish. Wait for npm to actually serve the version.
       - name: Wait for npm to serve the new version
         run: |
+          TAG="${GITHUB_REF_NAME#v}"
           NAME=$(node -p "require('./package.json').name")
-          VERSION=$(node -p "require('./package.json').version")
-          for i in $(seq 1 30); do
-            if [ "$(npm view "$NAME@$VERSION" version 2>/dev/null)" = "$VERSION" ]; then
-              echo "$NAME@$VERSION is visible on npm."
+          for i in $(seq 1 60); do
+            CODE=$(curl -sS -o /dev/null -w '%{http_code}' -H 'Cache-Control: no-cache' \
+              "https://registry.npmjs.org/$NAME/$TAG" || echo 000)
+            if [ "$CODE" = "200" ]; then
+              echo "npm is serving $NAME@$TAG (after $i attempt(s))."
               exit 0
             fi
-            echo "Waiting for $NAME@$VERSION on npm (attempt $i/30)..."
-            sleep 10
+            echo "attempt $i/60: npm returned $CODE, waiting 5s…"
+            sleep 5
           done
-          echo "::error::$NAME@$VERSION did not appear on npm within 5 minutes."
+          echo "::error::npm did not serve $NAME@$TAG within 5 minutes. It may still appear shortly — re-run the failed job from the Actions tab."
           exit 1
 
       - name: Install mcp-publisher
@@ -93,18 +102,20 @@ jobs:
       - name: Authenticate to MCP Registry (GitHub OIDC)
         run: ./mcp-publisher login github-oidc
 
-      # Retries cover the registry's own npm lookup lagging behind ours.
+      # Idempotent: skip when the registry already advertises this version, so a
+      # re-run of a fully successful release is a no-op rather than an error.
       - name: Publish to MCP Registry
         run: |
-          for i in 1 2 3 4 5; do
-            if ./mcp-publisher publish; then
-              exit 0
-            fi
-            echo "MCP Registry publish failed (attempt $i/5); retrying in 30s..."
-            sleep 30
-          done
-          echo "::error::MCP Registry publish failed after 5 attempts."
-          exit 1
+          TAG="${GITHUB_REF_NAME#v}"
+          SERVER=$(node -p "require('./server.json').name")
+          CURRENT=$(curl -sS "https://registry.modelcontextprotocol.io/v0/servers?search=$SERVER" \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const j=JSON.parse(s);const m=j.servers.find(x=>x._meta['io.modelcontextprotocol.registry/official'].isLatest);process.stdout.write(m?m.server.version:'')}catch(e){process.stdout.write('')}})" || echo "")
+          if [ "$CURRENT" = "$TAG" ]; then
+            echo "MCP Registry already publishes $SERVER $TAG — skipping."
+          else
+            echo "MCP Registry currently at '${CURRENT:-none}', publishing $TAG."
+            ./mcp-publisher publish
+          fi
 
       - name: Summary
         run: |
