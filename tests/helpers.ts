@@ -1,14 +1,13 @@
 import * as os from "node:os";
 import * as path from "node:path";
 import { expect, vi } from "vitest";
-import { z } from "zod";
-import type { ZodRawShape } from "zod";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { _setRateLimitForTests } from "../src/client.js";
 
 export interface CapturedTool {
   description: string;
-  schema: ZodRawShape;
+  schema: z.ZodType<Record<string, unknown>>;
   handler: (
     args: Record<string, unknown>
   ) => Promise<{ content: Array<{ type: string; text: string }> }>;
@@ -20,13 +19,16 @@ export function captureTools(
 ): Record<string, CapturedTool> {
   const tools: Record<string, CapturedTool> = {};
   const fake = {
-    tool: (
+    registerTool: (
       name: string,
-      description: string,
-      schema: ZodRawShape,
+      config: { description: string; inputSchema: CapturedTool["schema"] },
       handler: CapturedTool["handler"]
     ) => {
-      tools[name] = { description, schema, handler };
+      tools[name] = {
+        description: config.description,
+        schema: config.inputSchema,
+        handler,
+      };
     },
   };
   register(fake as unknown as McpServer);
@@ -38,7 +40,7 @@ export async function invokeTool(
   tool: CapturedTool,
   args: Record<string, unknown> = {}
 ) {
-  const parsed = z.object(tool.schema).parse(args);
+  const parsed = tool.schema.parse(args);
   const result = await tool.handler(parsed);
   const payload = JSON.parse(result.content[0].text);
   return { result, payload };

@@ -1,22 +1,29 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { untappdFetch } from "../client.js";
 import { UserFriendsResponse } from "../types.js";
 
 export function registerGetUserFriends(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "get_user_friends",
-    "Retrieve a user's friend list (public accounts only)",
     {
-      username: z.string().describe("Untappd username"),
-      offset: z.number().int().min(0).optional().describe("Pagination offset"),
-      limit: z
-        .number()
-        .int()
-        .min(1)
-        .max(50)
-        .optional()
-        .describe("Results per page (max 50, default 25)"),
+      description: "Retrieve a user's friend list (public accounts only)",
+      inputSchema: z.object({
+        username: z.string().describe("Untappd username"),
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .optional()
+          .describe("Pagination offset"),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(50)
+          .optional()
+          .describe("Results per page (max 50, default 25)"),
+      }),
     },
     async ({ username, offset, limit }) => {
       const { data, rateLimit } = await untappdFetch<UserFriendsResponse>(

@@ -1,30 +1,35 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { untappdFetch } from "../client.js";
 import { VenueCheckinsResponse } from "../types.js";
 
 export function registerGetGlobalFeed(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "get_global_feed",
-    "Retrieve the global public check-in feed (The Pub). High rate-limit cost for the data returned — prefer min_id polling to fetch only new check-ins. Note: standard API keys may not be authorized for this endpoint (Untappd returns 'not authorized to call this method from this key')",
     {
-      limit: z
-        .number()
-        .int()
-        .min(1)
-        .max(50)
-        .optional()
-        .describe("Results per page (max 50, default 25 — the API may cap some feeds at 25)"),
-      max_id: z
-        .number()
-        .int()
-        .optional()
-        .describe("Return results older than this checkin ID"),
-      min_id: z
-        .number()
-        .int()
-        .optional()
-        .describe("Return only checkins newer than this ID"),
+      description:
+        "Retrieve the global public check-in feed (The Pub). High rate-limit cost for the data returned — prefer min_id polling to fetch only new check-ins. Note: standard API keys may not be authorized for this endpoint (Untappd returns 'not authorized to call this method from this key')",
+      inputSchema: z.object({
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(50)
+          .optional()
+          .describe(
+            "Results per page (max 50, default 25 — the API may cap some feeds at 25)"
+          ),
+        max_id: z
+          .number()
+          .int()
+          .optional()
+          .describe("Return results older than this checkin ID"),
+        min_id: z
+          .number()
+          .int()
+          .optional()
+          .describe("Return only checkins newer than this ID"),
+      }),
     },
     async ({ limit, max_id, min_id }) => {
       const { data, rateLimit } = await untappdFetch<VenueCheckinsResponse>(

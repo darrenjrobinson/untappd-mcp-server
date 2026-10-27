@@ -1,18 +1,21 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { untappdFetch } from "../client.js";
 import { FoursquareLookupResponse } from "../types.js";
 
 export function registerGetVenueFoursquareLookup(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "get_venue_foursquare_lookup",
-    "Resolve a Foursquare venue ID to its Untappd venue (bridge between Foursquare data and Untappd venue tools)",
     {
-      foursquare_id: z
-        .string()
-        .describe(
-          "Foursquare venue ID in v2 MD5-hash format (v3 numeric IDs will not work)"
-        ),
+      description:
+        "Resolve a Foursquare venue ID to its Untappd venue (bridge between Foursquare data and Untappd venue tools)",
+      inputSchema: z.object({
+        foursquare_id: z
+          .string()
+          .describe(
+            "Foursquare venue ID in v2 MD5-hash format (v3 numeric IDs will not work)"
+          ),
+      }),
     },
     async ({ foursquare_id }) => {
       const { data, rateLimit } = await untappdFetch<FoursquareLookupResponse>(

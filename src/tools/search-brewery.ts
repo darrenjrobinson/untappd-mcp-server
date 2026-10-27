@@ -1,15 +1,17 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { untappdFetch } from "../client.js";
 import { BrewerySearchResponse } from "../types.js";
 
 export function registerSearchBrewery(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "search_brewery",
-    "Search for breweries by name",
     {
-      q: z.string().describe("Brewery name search query"),
-      offset: z.number().int().optional().describe("Offset for pagination"),
+      description: "Search for breweries by name",
+      inputSchema: z.object({
+        q: z.string().describe("Brewery name search query"),
+        offset: z.number().int().optional().describe("Offset for pagination"),
+      }),
     },
     async ({ q, offset }) => {
       const { data, rateLimit } = await untappdFetch<BrewerySearchResponse>(

@@ -33,7 +33,7 @@ const username = process.env.UNTAPPD_USERNAME ?? "gregavola";
 // Capture tool handlers the same way the unit tests do.
 const tools = {};
 registerAllTools({
-  tool: (name, _description, _schema, handler) => {
+  registerTool: (name, _config, handler) => {
     tools[name] = handler;
   },
 });

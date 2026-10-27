@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import {
   assertRateLimitSufficient,
@@ -21,18 +21,23 @@ function topCounts(counts: Map<string, number>, top: number) {
 }
 
 export function registerGetUserBeerStats(server: McpServer) {
-  server.tool(
+  server.registerTool(
     "get_user_beer_stats",
-    "Aggregate a user's distinct beer history into style, brewery, and rating breakdowns (paginates the API — costs 1 call per 50 beers scanned)",
     {
-      username: z.string().describe("Untappd username"),
-      max_pages: z
-        .number()
-        .int()
-        .min(1)
-        .max(20)
-        .optional()
-        .describe("Max pages to scan at 50 beers/page (default 10 = 500 beers)"),
+      description:
+        "Aggregate a user's distinct beer history into style, brewery, and rating breakdowns (paginates the API — costs 1 call per 50 beers scanned)",
+      inputSchema: z.object({
+        username: z.string().describe("Untappd username"),
+        max_pages: z
+          .number()
+          .int()
+          .min(1)
+          .max(20)
+          .optional()
+          .describe(
+            "Max pages to scan at 50 beers/page (default 10 = 500 beers)"
+          ),
+      }),
     },
     async ({ username, max_pages }) => {
       const maxPages = max_pages ?? 10;
