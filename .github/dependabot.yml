@@ -10,6 +10,11 @@ updates:
       # move to it deliberately rather than via a grouped dev bump.
       - dependency-name: typescript
         update-types: ["version-update:semver-major"]
+      # Keep Node types at the oldest Node the toolchain runs on (vitest 5
+      # needs 22); newer majors would let Node-26-only APIs compile while
+      # engines still allows Node 20.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       # The v2 SDK packages share one version (server pins core exactly), so
       # they must move together. Listed first: a package joins the first
