@@ -104,12 +104,17 @@ jobs:
 
       # Idempotent: skip when the registry already advertises this version, so a
       # re-run of a fully successful release is a no-op rather than an error.
+      #
+      # Looks up the exact server via /versions/latest rather than ?search=,
+      # which is paginated and substring-matched. An unknown server returns 404
+      # with no .server, so CURRENT stays empty and the publish goes ahead.
       - name: Publish to MCP Registry
         run: |
           TAG="${GITHUB_REF_NAME#v}"
           SERVER=$(node -p "require('./server.json').name")
-          CURRENT=$(curl -sS "https://registry.modelcontextprotocol.io/v0/servers?search=$SERVER" \
-            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const j=JSON.parse(s);const m=j.servers.find(x=>x._meta['io.modelcontextprotocol.registry/official'].isLatest);process.stdout.write(m?m.server.version:'')}catch(e){process.stdout.write('')}})" || echo "")
+          SERVER_ENC=$(node -p "encodeURIComponent(require('./server.json').name)")
+          CURRENT=$(curl -sS "https://registry.modelcontextprotocol.io/v0/servers/$SERVER_ENC/versions/latest" \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(JSON.parse(s).server?.version||'')}catch(e){process.stdout.write('')}})" || echo "")
           if [ "$CURRENT" = "$TAG" ]; then
             echo "MCP Registry already publishes $SERVER $TAG — skipping."
           else
